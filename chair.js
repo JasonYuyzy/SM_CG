@@ -45,6 +45,9 @@ var g_normalMatrix = new Matrix4();  // Coordinate transformation matrix for nor
 var ANGLE_STEP = 3.0;  // The increments of rotation angle (degrees)
 var g_xAngle = 0.0;    // The rotation x angle (degrees)
 var g_yAngle = 0.0;    // The rotation y angle (degrees)
+var R_L = 0;
+var U_D = 20;
+var C_F = 30;
 
 function main() {
   // Retrieve <canvas> element
@@ -99,7 +102,10 @@ function main() {
   //Xeye(right/left move), Yeye(up/down move), Zeye(close~far move);
   //Xat(left/right move), Yat(down/up move), Zat;
   //DIRx(front spin), DIRy(+up side -down), DIRz)
-  viewMatrix.setLookAt(0, 0, 30, 0, 0, -5, 0, 1, 0);
+
+  //viewMatrix.setLookAt(0, 30, 10, 0, 0, 0, 0, 1, 0);
+  //viewMatrix.setLookAt(0, 20, 50, 0, 1, 0, 0, 1, 0);
+  viewMatrix.setLookAt(R_L, U_D, C_F, 0, 1, 0, 0, 1, 0);
   //(close/far, , )
   projMatrix.setPerspective(30, canvas.width/canvas.height, 1, 100);
   // Pass the model, view, and projection matrix to the uniform variable respectively
@@ -108,17 +114,54 @@ function main() {
 
 
   document.onkeydown = function(ev){
+  	//alert(ev.keyCode);
     keydown(ev, gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
   };
 
-  var gl2 = gl;
-  var u_ModelMatrix2 = u_ModelMatrix;
-  var u_NormalMatrix2 = u_NormalMatrix;
-  var u_isLighting2 = u_isLighting;
+  document.onkeydown = function(ev){
+  	switch (ev.keyCode) {
+  		case 87: // Up arrow key 'W' the positive rotation of arm1 around the y-axis
+      		U_D = U_D + 1;
+      		break;
+    	case 83: // Down arrow key 'S' the negative rotation of arm1 around the y-axis
+      		U_D = U_D - 1;
+      		break;
+    	case 65: // Right arrow key 'A' the positive rotation of arm1 around the y-axis
+      		R_L = R_L + 1;
+      		break;
+    	case 68: // Left arrow key 'D' the negative rotation of arm1 around the y-axis
+      		R_L = R_L - 1;
+      		break;
+      	case 40: // Up arrow key -> the positive rotation of arm1 around the y-axis
+      		g_xAngle = (g_xAngle + ANGLE_STEP) % 360;
+      		break;
+    	case 38: // Down arrow key -> the negative rotation of arm1 around the y-axis
+      		g_xAngle = (g_xAngle - ANGLE_STEP) % 360;
+      		break;
+    	case 39: // Right arrow key -> the positive rotation of arm1 around the y-axis
+      		g_yAngle = (g_yAngle + ANGLE_STEP) % 360;
+      		break;
+    	case 37: // Left arrow key -> the negative rotation of arm1 around the y-axis
+      		g_yAngle = (g_yAngle - ANGLE_STEP) % 360;
+      		break;
+    	default: return; // Skip drawing at no effective action
+  	}
+  	//keydown(ev, gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
+  	//alert(R_L);
+  	
+  	viewMatrix.setLookAt(R_L, U_D, C_F, 0, 1, 0, 0, 1, 0);
+  	//(close/far, , )
+  	projMatrix.setPerspective(30, canvas.width/canvas.height, 1, 100);
+  	// Pass the model, view, and projection matrix to the uniform variable respectively
+  	gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
+  	gl.uniformMatrix4fv(u_ProjMatrix, false, projMatrix.elements);
+
+  	draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
+  	
+  };
+
 
   draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
-
-  draw2(gl2, u_ModelMatrix2, u_NormalMatrix2, u_isLighting2);
 }
 
 function keydown(ev, gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
@@ -139,49 +182,7 @@ function keydown(ev, gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
   }
 
   // Draw the scene
-  draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
-}
-
-function initVertexBuffers1_for_desk(gl) {
-  //Create a board
-  //      V1--V2
-  //     /      \
-  //    V6      V3   look down
-  //     \      /
-  //      V5--V4
-
-  var vertices_desk = new Float32Array([
-      
-    ]);
-
-  var colors_desk = new Float32Array([
-   
-    ]);
-
-  var normals_desk = new Float32Array([
-    
-    ]);
-
-  var indices_desk = new Float32Array([
-
-    ]);
-
-  // Write the vertex property to buffers (coordinates, colors and normals)
-  if (!initArrayBuffer1(gl, 'a_Position', vertices_desk, 3, gl.FLOAT)) return -1;
-  if (!initArrayBuffer1(gl, 'a_Color', colors_desk, 3, gl.FLOAT)) return -1;
-  if (!initArrayBuffer1(gl, 'a_Normal', normals_desk, 3, gl.FLOAT)) return -1;
-
-  // Write the indices to the buffer object
-  var indexBuffer_desk = gl.createBuffer_desk();
-  if (!indexBuffer_desk) {
-    console.log('Failed to create the buffer object');
-    return false;
-  }
-
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer_desk);
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices_desk, gl.STATIC_DRAW);
-
-  return indices_desk.length;
+  //draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
 }
 
 function initVertexBuffers1(gl) {
@@ -273,7 +274,6 @@ function initArrayBuffer1 (gl, attribute, data, num, type) {
   gl.enableVertexAttribArray(a_attribute);
 
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
-
   return true;
 }
 
@@ -325,6 +325,95 @@ function initAxesVertexBuffers1(gl) {
 
   return n;
 }
+
+function initArrayBuffer2 (gl, attribute, data, num, type) {
+  // Create a buffer object
+  var buffer = gl.createBuffer();
+  if (!buffer) {
+    console.log('Failed to create the buffer object');
+    return false;
+  }
+  // Write date into the buffer object
+  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
+  // Assign the buffer object to the attribute variable
+  var a_attribute = gl.getAttribLocation(gl.program, attribute);
+  if (a_attribute < 0) {
+    console.log('Failed to get the storage location of ' + attribute);
+    return false;
+  }
+  gl.vertexAttribPointer(a_attribute, num, type, false, 0, 0);
+  // Enable the assignment of the buffer object to the attribute variable
+  gl.enableVertexAttribArray(a_attribute);
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  return true;
+}
+
+function initVertexBuffers2(gl) {
+  //Create a board
+  //    v6----- v5
+  //   /|      /|
+  //  v1------v0|
+  //  | |     | |
+  //  | |v7---|-|v4
+  //  |/      |/
+  //  v2------v3
+  var vertices = new Float32Array([
+  		0.5, 0.5, 0.5,  -0.5, 0.5, 0.5,  -0.5,-0.5, 0.5,   0.5,-0.5, 0.5, // front
+     	0.5, 0.5, 0.5,   0.5,-0.5, 0.5,   0.5,-0.5,-0.5,   0.5, 0.5,-0.5, // right
+     	0.5, 0.5, 0.5,   0.5, 0.5,-0.5,  -0.5, 0.5,-0.5,  -0.5, 0.5, 0.5, // v0-v5-v6-v1 up
+       -0.5, 0.5, 0.5,  -0.5, 0.5,-0.5,  -0.5,-0.5,-0.5,  -0.5,-0.5, 0.5, // left
+       -0.5,-0.5,-0.5,   0.5,-0.5,-0.5,   0.5,-0.5, 0.5,  -0.5,-0.5, 0.5, // down
+     	0.5,-0.5,-0.5,  -0.5,-0.5,-0.5,  -0.5, 0.5,-0.5,   0.5, 0.5,-0.5  // back
+    ]);
+
+  var colors = new Float32Array([
+   		1, 1, 1,   1, 1, 1,   1, 1, 1,  1, 1, 1,    // front
+    	1, 1, 1,   1, 1, 1,   1, 1, 1,  1, 1, 1,    // right
+    	1, 1, 1,   1, 1, 1,   1, 1, 1,  1, 1, 1,
+    	1, 1, 1,   1, 1, 1,   1, 1, 1,  1, 1, 1,    // left
+    	1, 1, 1,   1, 1, 1,   1, 1, 1,  1, 1, 1,    // down
+    	1, 1, 1,   1, 1, 1,   1, 1, 1,  1, 1, 1,　  // back
+    ]);
+
+  var normals = new Float32Array([
+    	0.0, 0.0, 1.0,   0.0, 0.0, 1.0,   0.0, 0.0, 1.0,   0.0, 0.0, 1.0,  // front
+    	1.0, 0.0, 0.0,   1.0, 0.0, 0.0,   1.0, 0.0, 0.0,   1.0, 0.0, 0.0,  // right
+    	1.0, 1.0, 0.0,   0.0, 1.0, 0.0,   0.0, 1.0, 0.0,   0.0, 1.0, 0.0,  // v0-v5-v6-v1 up
+   	   -1.0, 1.0, 0.0,  -1.0, 1.0, 0.0,  -1.0, 1.0, 0.0,  -1.0, 1.0, 0.0,  // left
+    	0.0,-1.0, 0.0,   0.0,-1.0, 0.0,   0.0,-1.0, 0.0,   0.0,-1.0, 0.0,  // down
+    	0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0   // back
+    ]);
+
+  var indices = new Float32Array([
+  		0, 1, 2,   0, 2, 3,    // front
+     	4, 5, 6,   4, 6, 7,    // right
+     	8, 9,10,   8,10,11,    // up
+    	12,13,14,  12,14,15,   // left
+    	16,17,18,  16,18,19,   // down
+    	20,21,22,  20,22,23    // back
+    ]);
+
+  // Write the vertex property to buffers (coordinates, colors and normals)
+  if (!initArrayBuffer2(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer2(gl, 'a_Color', colors, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer2(gl, 'a_Normal', normals, 3, gl.FLOAT)) return -1;
+  //alert("yessss");
+  // Write the indices to the buffer object
+  var indexBuffer = gl.createBuffer();
+  if (!indexBuffer) {
+    console.log('Failed to create the buffer object');
+    return false;
+  }
+
+  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+  //alert("????");
+  return indices.length;
+}
+
+
 
 var g_matrixStack = []; // Array for storing a matrix
 function PushMatrix1(m) { // Store the specified matrix to the array
@@ -415,8 +504,6 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
   modelMatrix = popMatrix1();
 
 
-  gl.uniform1i(u_isLighting, true); // Will apply lighting
-
   // Set the vertex coordinates and color (for the cube)
   var n = initVertexBuffers1(gl);
   if (n < 0) {
@@ -468,6 +555,24 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
     modelMatrix.translate(-0.75, -1.05, 0.75);  // Translation
     modelMatrix.scale(0.5, 1.6, 0.5); // Scale
     drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+}
+
+function drawbox1(gl, u_ModelMatrix, u_NormalMatrix, n) {
+  PushMatrix1(modelMatrix);
+
+    // Pass the model matrix to the uniform variable
+    gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+
+    // Calculate the normal transformation matrix and pass it to u_NormalMatrix
+    g_normalMatrix.setInverseOf(modelMatrix);
+    g_normalMatrix.transpose();
+    gl.uniformMatrix4fv(u_NormalMatrix, false, g_normalMatrix.elements);
+
+    // Draw the cube
+    //alert(n);
+    gl.drawElements(gl.TRIANGLES, n, gl.UNSIGNED_BYTE, 0);
+
   modelMatrix = popMatrix1();
 }
 
