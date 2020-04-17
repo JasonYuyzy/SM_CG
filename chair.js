@@ -326,93 +326,49 @@ function initAxesVertexBuffers1(gl) {
   return n;
 }
 
-function initArrayBuffer2 (gl, attribute, data, num, type) {
-  // Create a buffer object
-  var buffer = gl.createBuffer();
-  if (!buffer) {
-    console.log('Failed to create the buffer object');
-    return false;
-  }
-  // Write date into the buffer object
-  gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-  gl.bufferData(gl.ARRAY_BUFFER, data, gl.STATIC_DRAW);
-  // Assign the buffer object to the attribute variable
-  var a_attribute = gl.getAttribLocation(gl.program, attribute);
-  if (a_attribute < 0) {
-    console.log('Failed to get the storage location of ' + attribute);
-    return false;
-  }
-  gl.vertexAttribPointer(a_attribute, num, type, false, 0, 0);
-  // Enable the assignment of the buffer object to the attribute variable
-  gl.enableVertexAttribArray(a_attribute);
+function initWallVertexBuffers(gl) {
+	//draw a box
+	var verticesColors = new Float32Array([
+		10.0, -2.0, -10.0,  1.0, 1.0, 1.0,   
+	   -10.0, -2.0, -10.0,  1.0, 1.0, 1.0,
+	   -10.0, -2.0,  10.0,  1.0, 1.0, 1.0,
 
-  gl.bindBuffer(gl.ARRAY_BUFFER, null);
-  return true;
+		10.0, -2.0,  10.0,  1.0, 1.0 ,1.0,
+		10.0, -2.0, -10.0,  1.0, 1.0, 1.0,
+	   -10.0, -2.0,  10.0,  1.0, 1.0, 1.0
+
+	]);
+	var n = 6;
+
+	var vertexColorBuffer = gl.createBuffer();
+	if(!vertexColorBuffer) {
+		console.log("Failed to create the wall buffer project");
+		return -1;
+	}
+
+	gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBuffer);
+	gl.bufferData(gl.ARRAY_BUFFER, verticesColors, gl.STATIC_DRAW);
+
+	var FSIZE = verticesColors.BYTES_PER_ELEMENT;
+
+	var a_Position = gl.getAttribLocation(gl.program,  'a_Position');
+	if(a_Color<0) {
+		console.log('Failed to get the storage location of a_Position');
+		return -1;
+	}
+	gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, FSIZE * 6, 0);
+	gl.enableVertexAttribArray(a_Position);
+
+	var a_Color = gl.getAttribLocation(gl.program, 'a_Color');
+	if(a_Color<0) {
+		console.log('Failed to get the storage location of a_Color')
+		return -1;
+	}
+	gl.vertexAttribPointer(a_Color, 3, gl.FLOAT, false, FSIZE * 6, FSIZE * 3);
+	gl.enableVertexAttribArray(a_Color);
+
+	return n;
 }
-
-function initVertexBuffers2(gl) {
-  //Create a board
-  //    v6----- v5
-  //   /|      /|
-  //  v1------v0|
-  //  | |     | |
-  //  | |v7---|-|v4
-  //  |/      |/
-  //  v2------v3
-  var vertices = new Float32Array([
-  		0.5, 0.5, 0.5,  -0.5, 0.5, 0.5,  -0.5,-0.5, 0.5,   0.5,-0.5, 0.5, // front
-     	0.5, 0.5, 0.5,   0.5,-0.5, 0.5,   0.5,-0.5,-0.5,   0.5, 0.5,-0.5, // right
-     	0.5, 0.5, 0.5,   0.5, 0.5,-0.5,  -0.5, 0.5,-0.5,  -0.5, 0.5, 0.5, // v0-v5-v6-v1 up
-       -0.5, 0.5, 0.5,  -0.5, 0.5,-0.5,  -0.5,-0.5,-0.5,  -0.5,-0.5, 0.5, // left
-       -0.5,-0.5,-0.5,   0.5,-0.5,-0.5,   0.5,-0.5, 0.5,  -0.5,-0.5, 0.5, // down
-     	0.5,-0.5,-0.5,  -0.5,-0.5,-0.5,  -0.5, 0.5,-0.5,   0.5, 0.5,-0.5  // back
-    ]);
-
-  var colors = new Float32Array([
-   		1, 1, 1,   1, 1, 1,   1, 1, 1,  1, 1, 1,    // front
-    	1, 1, 1,   1, 1, 1,   1, 1, 1,  1, 1, 1,    // right
-    	1, 1, 1,   1, 1, 1,   1, 1, 1,  1, 1, 1,
-    	1, 1, 1,   1, 1, 1,   1, 1, 1,  1, 1, 1,    // left
-    	1, 1, 1,   1, 1, 1,   1, 1, 1,  1, 1, 1,    // down
-    	1, 1, 1,   1, 1, 1,   1, 1, 1,  1, 1, 1,　  // back
-    ]);
-
-  var normals = new Float32Array([
-    	0.0, 0.0, 1.0,   0.0, 0.0, 1.0,   0.0, 0.0, 1.0,   0.0, 0.0, 1.0,  // front
-    	1.0, 0.0, 0.0,   1.0, 0.0, 0.0,   1.0, 0.0, 0.0,   1.0, 0.0, 0.0,  // right
-    	1.0, 1.0, 0.0,   0.0, 1.0, 0.0,   0.0, 1.0, 0.0,   0.0, 1.0, 0.0,  // v0-v5-v6-v1 up
-   	   -1.0, 1.0, 0.0,  -1.0, 1.0, 0.0,  -1.0, 1.0, 0.0,  -1.0, 1.0, 0.0,  // left
-    	0.0,-1.0, 0.0,   0.0,-1.0, 0.0,   0.0,-1.0, 0.0,   0.0,-1.0, 0.0,  // down
-    	0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0   // back
-    ]);
-
-  var indices = new Float32Array([
-  		0, 1, 2,   0, 2, 3,    // front
-     	4, 5, 6,   4, 6, 7,    // right
-     	8, 9,10,   8,10,11,    // up
-    	12,13,14,  12,14,15,   // left
-    	16,17,18,  16,18,19,   // down
-    	20,21,22,  20,22,23    // back
-    ]);
-
-  // Write the vertex property to buffers (coordinates, colors and normals)
-  if (!initArrayBuffer2(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
-  if (!initArrayBuffer2(gl, 'a_Color', colors, 3, gl.FLOAT)) return -1;
-  if (!initArrayBuffer2(gl, 'a_Normal', normals, 3, gl.FLOAT)) return -1;
-  //alert("yessss");
-  // Write the indices to the buffer object
-  var indexBuffer = gl.createBuffer();
-  if (!indexBuffer) {
-    console.log('Failed to create the buffer object');
-    return false;
-  }
-
-  gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-  gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
-  //alert("????");
-  return indices.length;
-}
-
 
 
 var g_matrixStack = []; // Array for storing a matrix
@@ -556,25 +512,75 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
     modelMatrix.scale(0.5, 1.6, 0.5); // Scale
     drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
   modelMatrix = popMatrix1();
-}
 
-function drawbox1(gl, u_ModelMatrix, u_NormalMatrix, n) {
+
+  //draw the wall
+  gl.uniform1i(u_isLighting, true);
+
+  var n = initWallVertexBuffers(gl)
+  if(n < 0) {
+  	console.log('Failed to set the vertex information');
+  	return;
+  }
+
+  modelMatrix.setTranslate(0, 0, 0);
+
   PushMatrix1(modelMatrix);
+    modelMatrix.translate(0, 0, 0);
+    modelMatrix.scale(1, 1, 1); 
+    //modelMatrix.rotate(0, 0, 0, 0);
+    PushMatrix1(modelMatrix);
+      gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+      gl.drawArrays(gl.TRIANGLES, 0, n);
+    modelMatrix = popMatrix1();
+  modelMatrix = popMatrix1();
 
-    // Pass the model matrix to the uniform variable
-    gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+  //back
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(0, 3, -9);
+    modelMatrix.scale(1, 0.5, 0.5);
+    modelMatrix.rotate(90, 1, 0, 0);
+    PushMatrix1(modelMatrix);
+      gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+      gl.drawArrays(gl.TRIANGLES, 0, n);
+    modelMatrix = popMatrix1();
+  modelMatrix = popMatrix1();
 
-    // Calculate the normal transformation matrix and pass it to u_NormalMatrix
-    g_normalMatrix.setInverseOf(modelMatrix);
-    g_normalMatrix.transpose();
-    gl.uniformMatrix4fv(u_NormalMatrix, false, g_normalMatrix.elements);
+  //right
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(9, 3, 0);
+    modelMatrix.scale(0.5, 0.5, 1);
+    modelMatrix.rotate(90, 0, 0, 1);
+    PushMatrix1(modelMatrix);
+      gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+      gl.drawArrays(gl.TRIANGLES, 0, n);
+    modelMatrix = popMatrix1();
+  modelMatrix = popMatrix1();
 
-    // Draw the cube
-    //alert(n);
-    gl.drawElements(gl.TRIANGLES, n, gl.UNSIGNED_BYTE, 0);
+  //left
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(-9, 3, 0);
+    modelMatrix.scale(0.5, 0.5, 1);
+    modelMatrix.rotate(-90, 0, 0, 1);
+    PushMatrix1(modelMatrix);
+      gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+      gl.drawArrays(gl.TRIANGLES, 0, n);
+    modelMatrix = popMatrix1();
+  modelMatrix = popMatrix1();
 
+  //front
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(0, 3, 9);
+    modelMatrix.scale(1, 0.5, 0.5);
+    modelMatrix.rotate(-90, 1, 0, 0);
+    PushMatrix1(modelMatrix);
+      gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+      gl.drawArrays(gl.TRIANGLES, 0, n);
+    modelMatrix = popMatrix1();
   modelMatrix = popMatrix1();
 }
+
+
 
 function drawbox(gl, u_ModelMatrix, u_NormalMatrix, n) {
   PushMatrix1(modelMatrix);
