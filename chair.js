@@ -4,6 +4,9 @@ var VSHADER_SOURCE =
   'attribute vec4 a_Position;\n' +
   'attribute vec4 a_Color;\n' +
   'attribute vec4 a_Normal;\n' +        // Normal
+
+  //'attribute vec2 a_texcoord;\n' +
+
   'uniform mat4 u_ModelMatrix;\n' +
   'uniform mat4 u_NormalMatrix;\n' +
   'uniform mat4 u_ViewMatrix;\n' +
@@ -11,9 +14,15 @@ var VSHADER_SOURCE =
   'uniform vec3 u_LightColor;\n' +     // Light color
   'uniform vec3 u_LightDirection;\n' + // Light direction (in the world coordinate, normalized)
   'varying vec4 v_Color;\n' +
+
+  //'varying vec2 v_texcoord;\n' +
+
   'uniform bool u_isLighting;\n' +
   'void main() {\n' +
   '  gl_Position = u_ProjMatrix * u_ViewMatrix * u_ModelMatrix * a_Position;\n' +
+
+  //'  v_texcoord = a_texcoord;\n' +
+
   '  if(u_isLighting)\n' + 
   '  {\n' +
   '     vec3 normal = normalize((u_NormalMatrix * a_Normal).xyz);\n' +
@@ -32,9 +41,18 @@ var FSHADER_SOURCE =
   '#ifdef GL_ES\n' +
   'precision mediump float;\n' +
   '#endif\n' +
+
+  'varying vec2 v_texcoord;\n' +
+  'uniform sampler2D u_texture;\n' +
+
   'varying vec4 v_Color;\n' +
   'void main() {\n' +
   '  gl_FragColor = v_Color;\n' +
+
+  //'  vec4 Color1 = v_Color;\n' +
+  //'  vec4 Color2 = texture2D(u_texture, v_texcoord);\n' +
+  //'  gl_FragColor = Color2 * Color1;\n' +
+
   '}\n';
 
 var modelMatrix = new Matrix4(); // The model matrix
@@ -45,12 +63,16 @@ var g_normalMatrix = new Matrix4();  // Coordinate transformation matrix for nor
 var ANGLE_STEP = 3.0;  // The increments of rotation angle (degrees)
 var g_xAngle = 0.0;    // The rotation x angle (degrees)
 var g_yAngle = 0.0;    // The rotation y angle (degrees)
-var R_L_E = 0;
-var U_D_E = 20;
-var C_F_E = 30;
+var R_L_l = 0;
+var U_D_l = 20;
+var C_F_l = 30;
+var X_e = 0;
+var Y_e = 0;
+var Z_e = 0;
 var X = 0;
 var Y = 1;
 var Z = 0;
+var Q = 0;
 
 function main() {
   // Retrieve <canvas> element
@@ -87,6 +109,13 @@ function main() {
   // Trigger using lighting or not
   var u_isLighting = gl.getUniformLocation(gl.program, 'u_isLighting'); 
 
+
+
+  //mapping
+  var u_textureLocation = gl.getUniformLocation(gl.program, "u_texture");
+
+
+
   if (!u_ModelMatrix || !u_ViewMatrix || !u_NormalMatrix ||
       !u_ProjMatrix || !u_LightColor || !u_LightDirection ||
       !u_isLighting ) { 
@@ -97,70 +126,86 @@ function main() {
   // Set the light color (white)
   gl.uniform3f(u_LightColor, 1.0, 1.0, 1.0);
   // Set the light direction (in the world coordinate)
-  var lightDirection = new Vector3([0.0, 0.0, 4.0]);
+  var lightDirection = new Vector3([0.0, 4.0, 0.0]);
   lightDirection.normalize();     // Normalize
   gl.uniform3fv(u_LightDirection, lightDirection.elements);
 
   // Calculate the view matrix and the projection matrix
+  //the eye's location
   //Xeye(right/left move), Yeye(up/down move), Zeye(close~far move);
+  //the lookAt location
   //Xat(left/right move), Yat(down/up move), Zat;
   //DIRx(front spin), DIRy(+up side -down), DIRz)
 
   //viewMatrix.setLookAt(0, 30, 10, 0, 0, 0, 0, 1, 0);
   //viewMatrix.setLookAt(0, 20, 50, 0, 1, 0, 0, 1, 0);
-  viewMatrix.setLookAt(R_L_E, U_D_E, C_F_E, X, Y, Z, 0, 1, 0);
+  viewMatrix.setLookAt(R_L_l, U_D_l, C_F_l, X_e, Y_e, Z_e, X, Y, Z);
   //(close/far, , )
-  projMatrix.setPerspective(30, canvas.width/canvas.height, 1, 100);
+  projMatrix.setPerspective(40, canvas.width/canvas.height, 1, 100);
   // Pass the model, view, and projection matrix to the uniform variable respectively
   gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
   gl.uniformMatrix4fv(u_ProjMatrix, false, projMatrix.elements);
 
-
+/*
   document.onkeydown = function(ev){
   	//alert(ev.keyCode);
     keydown(ev, gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
-  };
+  };*/
 
   document.onkeydown = function(ev){
   	//alert(ev.keyCode);
   	switch (ev.keyCode) {
   		//moving the vertural camera
   		case 87: // key 'W'
-  			C_F_E = C_F_E - 1;
-      		U_D_E = U_D_E - 1;
+  			C_F_l = C_F_l - 1;
+      		//U_D_l = U_D_l - 1;
+      		Z_e = Z_e - 1;
       		break;
     	case 83: // key 'S'
-      		C_F_E = C_F_E + 1;
-      		U_D_E = U_D_E + 1;
+      		C_F_l = C_F_l + 1;
+      		//U_D_l = U_D_l + 1;
+      		Z_e = Z_e + 1
       		break;
     	case 65: // key 'A'
-      		R_L_E = R_L_E - 1;
-      		X = X - 1;
+      		R_L_l = R_L_l - 1;
+      		X_e = X_e - 1;
       		break;
     	case 68: // key 'D'
-      		R_L_E = R_L_E + 1;
-      		X = X + 1;
+      		R_L_l = R_L_l + 1;
+      		X_e = X_e + 1;
       		break;
       	case 189: // key '-' 
-      		U_D_E = U_D_E - 1;
-      		Y = Y - 1;
+      		U_D_l = U_D_l - 1;
+      		Y_e = Y_e - 1;
       		break;
       	case 187: //key '+'
-      		U_D_E = U_D_E + 1;
-      		Y = Y + 1;
+      		U_D_l = U_D_l + 1;
+      		Y_e = Y_e + 1;
       		break;
       	case 89: // key 'Y'
-      		Y = Y + 1;
+      		Y_e = (Y_e + 1) % 360;
       		break;
       	case 72: // key 'H'
-      		Y = Y - 1;
+      		Y_e = (Y_e - 1) % 360;
       		break;
       	case 71: // key 'G'
-      		X = X - 1;
+      		X_e = (X_e - 1) % 360;
       		break;
       	case 74: // key 'J'
-      		X = X + 1;
+      		X_e = (X_e + 1) % 360;
       		break;
+     	case 75: // key 'K'
+     		Z_e = Z_e - 1;
+     		break;
+     	case 76: // key 'L'
+     		Z_e = Z_e + 1;
+     		break;
+     	case 32: // key 'BLANK'
+     		Y = Y * (-1);
+     		break;
+     	case 70:
+     		Q = Q + 1;
+     		break;
       	case 40: // Up arrow key -> the positive rotation of arm1 around the y-axis
       		g_xAngle = (g_xAngle + ANGLE_STEP) % 360;
       		break;
@@ -178,19 +223,20 @@ function main() {
   	//keydown(ev, gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
   	//alert(R_L);
   	
-  	viewMatrix.setLookAt(R_L_E, U_D_E, C_F_E, X, Y, Z, 0, 1, 0);
+  	//viewMatrix.lookAt(0, 0, 0);
+  	viewMatrix.setLookAt(R_L_l, U_D_l, C_F_l, X_e, Y_e, Z_e, X, Y, Z);
   	//(close/far, , )
-  	projMatrix.setPerspective(30, canvas.width/canvas.height, 1, 100);
+  	projMatrix.setPerspective(40, canvas.width/canvas.height, 1, 100);
   	// Pass the model, view, and projection matrix to the uniform variable respectively
   	gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
   	gl.uniformMatrix4fv(u_ProjMatrix, false, projMatrix.elements);
 
-  	draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
+  	draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting, u_textureLocation);
   	
   };
 
 
-  draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
+  draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting, u_textureLocation);
 }
 
 
@@ -248,6 +294,7 @@ function initVertexBuffers1(gl) {
   if (!initArrayBuffer1(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer1(gl, 'a_Color', colors, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer1(gl, 'a_Normal', normals, 3, gl.FLOAT)) return -1;
+
 
   // Write the indices to the buffer object
   var indexBuffer = gl.createBuffer();
@@ -337,6 +384,7 @@ function initAxesVertexBuffers1(gl) {
 
 function initWallVertexBuffers(gl) {
 	//draw a box
+	/*
 	var verticesColors = new Float32Array([
 		10.0, -2.0, -10.0,  1.0, 1.0, 1.0,
 	   -10.0, -2.0,  10.0,  1.0, 1.0, 1.0,
@@ -346,10 +394,30 @@ function initWallVertexBuffers(gl) {
 		10.0, -2.0,  10.0,  1.0, 1.0 ,1.0,
 	   -10.0, -2.0,  10.0,  1.0, 1.0, 1.0,
 		10.0, -2.0, -10.0,  1.0, 1.0, 1.0
+	]);*/
+
+	var verticesColors = new Float32Array([
+		10.0, -2.0, -10.0,
+	   -10.0, -2.0, -10.0,
+	   -10.0, -2.0,  10.0,
+	   
+		10.0, -2.0, -10.0,
+	   -10.0, -2.0,  10.0,
+		10.0, -2.0,  10.0,
 	]);
 
 	var indices = new Float32Array([
 		0,1,2,  0,2,3
+	]);
+
+	var mapping = new Float32Array([
+		// left column front
+        1, 1,
+        1, 0,
+        0, 0,
+        1, 1,
+        0, 0,
+        0, 1
 	]);
 
 	var vertexColorBuffer = gl.createBuffer();
@@ -364,13 +432,14 @@ function initWallVertexBuffers(gl) {
 	var FSIZE = verticesColors.BYTES_PER_ELEMENT;
 
 	var a_Position = gl.getAttribLocation(gl.program,  'a_Position');
-	if(a_Color<0) {
+	if(a_Position<0) {
 		console.log('Failed to get the storage location of a_Position');
 		return -1;
 	}
 	gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, FSIZE * 6, 0);
 	gl.enableVertexAttribArray(a_Position);
 
+/*
 	var a_Color = gl.getAttribLocation(gl.program, 'a_Color');
 	if(a_Color<0) {
 		console.log('Failed to get the storage location of a_Color')
@@ -381,8 +450,49 @@ function initWallVertexBuffers(gl) {
 
 	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertexColorBuffer);
   	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
+*/
 
-	return indices.length;
+
+
+	var texcoordLocation = gl.getAttribLocation(gl.program, "a_texcoord");
+
+	var texcoordBuffer = gl.createBuffer();
+	if(!texcoordBuffer) {
+		console.log("Failed to create the texcoord buffer project");
+		return -1;
+	}
+	gl.bindBuffer(gl.ARRAY_BUFFER, texcoordBuffer);
+	gl.bufferData(gl.ARRAY_BUFFER, mapping, gl.STATIC_DRAW);
+
+	gl.vertexAttribPointer(texcoordLocation, 2, gl.FLOAT, false, 0, 0);
+	gl.enableVertexAttribArray(texcoordLocation);
+
+
+	var texture = gl.createTexture();
+	if(!texture) {
+		console.log("Failed to create the texture.")
+	}
+	gl.bindTexture(gl.TEXTURE_2D, texture);
+	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 255, 255]));
+	/*
+	var image = new Image();
+	image.crossOrigin = "anonymous";
+  	image.src = "https://webglfundamentals.org/webgl/resources/f-texture.png";
+  	image.addEventListener('load', function() {
+   		// Now that the image has loaded make copy it to the texture.
+    	gl.bindTexture(gl.TEXTURE_2D, texture);
+    	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, image);
+    	gl.generateMipmap(gl.TEXTURE_2D);
+  	});
+	*/
+  	gl.vertexAttribPointer(texture, 2, gl.FLOAT, false, 0, 0);
+	gl.enableVertexAttribArray(texture);
+
+  	
+
+
+
+	return 6;
 }
 
 
@@ -396,7 +506,7 @@ function popMatrix1() { // Retrieve the matrix from the array
   return g_matrixStack.pop();
 }
 
-function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
+function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting, u_textureLocation) {
 
   // Clear color and depth buffer
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -522,6 +632,100 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
     drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
   modelMatrix = popMatrix1();
 
+////////Third Chair/////////////
+// Rotate, and then translate
+  modelMatrix.setTranslate(0, 0, -5);  // Translation (No translation is supported here)
+  modelMatrix.rotate(0, 0, 1, 0); // Rotate along y axis
+  modelMatrix.rotate(g_xAngle, 1, 0, 0); // Rotate along x axis
+
+  // Model the chair seat
+  PushMatrix1(modelMatrix);
+    modelMatrix.scale(2.0, 0.5, 2.0); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  // Model the chair back
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(0, 1.25, -0.75);  // Translation
+    modelMatrix.scale(2.0, 2.0, 0.5); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  // Model the chair back-right leg
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(0.75, -1.05, -0.75);  // Translation
+    modelMatrix.scale(0.5, 1.6, 0.5); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  // Model the chair back-left leg
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(-0.75, -1.05, -0.75);  // Translation
+    modelMatrix.scale(0.5, 1.6, 0.5); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  // Model the chair front-right leg
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(0.75, -1.05, 0.75);  // Translation
+    modelMatrix.scale(0.5, 1.6, 0.5); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  // Model the chair front-left leg
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(-0.75, -1.05, 0.75);  // Translation
+    modelMatrix.scale(0.5, 1.6, 0.5); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+////////Fourth Chair////////////
+// Rotate, and then translate
+  modelMatrix.setTranslate(0, 0, 5);  // Translation (No translation is supported here)
+  modelMatrix.rotate(180, 0, 1, 0); // Rotate along y axis
+  modelMatrix.rotate(g_xAngle, 1, 0, 0); // Rotate along x axis
+
+  // Model the chair seat
+  PushMatrix1(modelMatrix);
+    modelMatrix.scale(2.0, 0.5, 2.0); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  // Model the chair back
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(0, 1.25, -0.75);  // Translation
+    modelMatrix.scale(2.0, 2.0, 0.5); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  // Model the chair back-right leg
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(0.75, -1.05, -0.75);  // Translation
+    modelMatrix.scale(0.5, 1.6, 0.5); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  // Model the chair back-left leg
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(-0.75, -1.05, -0.75);  // Translation
+    modelMatrix.scale(0.5, 1.6, 0.5); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  // Model the chair front-right leg
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(0.75, -1.05, 0.75);  // Translation
+    modelMatrix.scale(0.5, 1.6, 0.5); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  // Model the chair front-left leg
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(-0.75, -1.05, 0.75);  // Translation
+    modelMatrix.scale(0.5, 1.6, 0.5); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
 ////////Desk////////////////////
 // Rotate, and then translate
   modelMatrix.setTranslate(0, 1.5, 0);  // Translation (No translation is supported here)
@@ -557,13 +761,15 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
 
   // Model the desk back-right leg
   PushMatrix1(modelMatrix);
-    modelMatrix.translate(·2.25, -1.6, -2.25);  // Translation
+    modelMatrix.translate(2.25, -1.6, -2.25);  // Translation
     modelMatrix.scale(0.5, 3.6, 0.5); // Scale
     drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
   modelMatrix = popMatrix1();
 
   //draw the wall
   gl.uniform1i(u_isLighting, false);
+
+  gl.uniform1i(u_textureLocation, true);
 
   var n = initWallVertexBuffers(gl)
   if(n < 0) {
@@ -573,6 +779,7 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting) {
 
   modelMatrix.setTranslate(0, 0, 0);
 
+  
   PushMatrix1(modelMatrix);
     modelMatrix.translate(0, 0, 0);
     modelMatrix.scale(1, 1, 1); 
