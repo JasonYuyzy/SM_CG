@@ -73,6 +73,7 @@ var X = 0;
 var Y = 1;
 var Z = 0;
 var Q = 0;
+var angle_lamb = 0;
 
 function main() {
   // Retrieve <canvas> element
@@ -124,27 +125,7 @@ function main() {
   }
 
   // Set the light color (white)
-  gl.uniform3f(u_LightColor, 1.0, 1.0, 1.0);
-  // Set the light direction (in the world coordinate)
-  var lightDirection = new Vector3([0.0, 4.0, 0.0]);
-  lightDirection.normalize();     // Normalize
-  gl.uniform3fv(u_LightDirection, lightDirection.elements);
-
-  // Calculate the view matrix and the projection matrix
-  //the eye's location
-  //Xeye(right/left move), Yeye(up/down move), Zeye(close~far move);
-  //the lookAt location
-  //Xat(left/right move), Yat(down/up move), Zat;
-  //DIRx(front spin), DIRy(+up side -down), DIRz)
-
-  //viewMatrix.setLookAt(0, 30, 10, 0, 0, 0, 0, 1, 0);
-  //viewMatrix.setLookAt(0, 20, 50, 0, 1, 0, 0, 1, 0);
-  viewMatrix.setLookAt(R_L_l, U_D_l, C_F_l, X_e, Y_e, Z_e, X, Y, Z);
-  //(close/far, , )
-  projMatrix.setPerspective(40, canvas.width/canvas.height, 1, 100);
-  // Pass the model, view, and projection matrix to the uniform variable respectively
-  gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
-  gl.uniformMatrix4fv(u_ProjMatrix, false, projMatrix.elements);
+  
 
 /*
   document.onkeydown = function(ev){
@@ -222,6 +203,12 @@ function main() {
   	}
   	//keydown(ev, gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
   	//alert(R_L);
+
+    gl.uniform3f(u_LightColor, 1.0, 1.0, 1.0);
+    // Set the light direction (in the world coordinate)
+    var lightDirection = new Vector3([0.0, 4.0, 0.0]);
+    lightDirection.normalize();     // Normalize
+    gl.uniform3fv(u_LightDirection, lightDirection.elements);
   	
   	//viewMatrix.lookAt(0, 0, 0);
   	viewMatrix.setLookAt(R_L_l, U_D_l, C_F_l, X_e, Y_e, Z_e, X, Y, Z);
@@ -235,9 +222,62 @@ function main() {
   	
   };
 
+  var plus = 0.3;
+  //while(angle_lamb < 45 && angle_lamb > -45) 
+  function draw() {
+    angle_lamb += plus;
+    shaking_light(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting, u_textureLocation, u_LightColor, u_LightDirection, u_ViewMatrix, u_ProjMatrix, canvas);
+    requestAnimationFrame(draw);
+
+    //sleep(4);
+    if (angle_lamb > 45) {
+      plus = -plus;
+    }
+    if (angle_lamb < -45) {
+      plus = -plus;
+    }
+    angle_lamb += plus;
+  }
+  draw();
+  
+}
+
+function sleep(numberMillis) {
+    var now = new Date();
+    var exitTime = now.getTime() + numberMillis;
+    while (true) {
+        now = new Date();
+        if (now.getTime() > exitTime)
+            return;
+    }
+}
+
+function shaking_light (gl, u_ModelMatrix, u_NormalMatrix, u_isLighting, u_textureLocation, u_LightColor, u_LightDirection, u_ViewMatrix, u_ProjMatrix, canvas) {
+  gl.uniform3f(u_LightColor, 1.0, 1.0, 1.0);
+  // Set the light direction (in the world coordinate)
+  var lightDirection = new Vector3([-angle_lamb / 7, 4.0, -angle_lamb / 7]);
+  lightDirection.normalize();     // Normalize
+  gl.uniform3fv(u_LightDirection, lightDirection.elements);
+
+  // Calculate the view matrix and the projection matrix
+  //the eye's location
+  //Xeye(right/left move), Yeye(up/down move), Zeye(close~far move);
+  //the lookAt location
+  //Xat(left/right move), Yat(down/up move), Zat;
+  //DIRx(front spin), DIRy(+up side -down), DIRz)
+
+  //viewMatrix.setLookAt(0, 30, 10, 0, 0, 0, 0, 1, 0);
+  //viewMatrix.setLookAt(0, 20, 50, 0, 1, 0, 0, 1, 0);
+  viewMatrix.setLookAt(R_L_l, U_D_l, C_F_l, X_e, Y_e, Z_e, X, Y, Z);
+  //(close/far, , )
+  projMatrix.setPerspective(40, canvas.width/canvas.height, 1, 100);
+  // Pass the model, view, and projection matrix to the uniform variable respectively
+  gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
+  gl.uniformMatrix4fv(u_ProjMatrix, false, projMatrix.elements);
 
   draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting, u_textureLocation);
 }
+
 
 
 function initVertexBuffers1(gl) {
@@ -382,20 +422,60 @@ function initAxesVertexBuffers1(gl) {
   return n;
 }
 
+function initLambVertexBuffers(gl) {
+  // draw the lamb cover
+  var vertexColors = new Float32Array([
+    0.0, -5.0, 0.0,  0.4, 1.4, 0.4,
+   -0.5, -6.0, 0.5,  0.4, 1.4, 0.4,
+    0.5, -6.0, 0.5,  0.4, 1.4, 0.4,
+  ]);
+
+  var vertexColorBuffer = gl.createBuffer();
+  if(!vertexColorBuffer) {
+    console.log("Failed to create the lamb buffer project");
+    return -1;
+  }
+
+  gl.bindBuffer(gl.ARRAY_BUFFER, vertexColorBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, vertexColors, gl.STATIC_DRAW);
+
+  var FSIZE = vertexColors.BYTES_PER_ELEMENT;
+
+  var a_Position = gl.getAttribLocation(gl.program,  'a_Position');
+  if(a_Position<0) {
+    console.log('Failed to get the storage location of a_Position');
+    return -1;
+  }
+  gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, FSIZE * 6, 0);
+  gl.enableVertexAttribArray(a_Position);
+
+
+  var a_Color = gl.getAttribLocation(gl.program, 'a_Color');
+  if(a_Color<0) {
+    console.log('Failed to get the storage location of a_Color')
+    return -1;
+  }
+  gl.vertexAttribPointer(a_Color, 3, gl.FLOAT, false, FSIZE * 6, FSIZE * 3);
+  gl.enableVertexAttribArray(a_Color);
+
+  return 3;
+
+}
+
 function initWallVertexBuffers(gl) {
 	//draw a box
-	/*
+	
 	var verticesColors = new Float32Array([
 		10.0, -2.0, -10.0,  1.0, 1.0, 1.0,
-	   -10.0, -2.0,  10.0,  1.0, 1.0, 1.0,
-	   -10.0, -2.0, -10.0,  1.0, 1.0, 1.0,
+	 -10.0, -2.0,  10.0,  1.0, 1.0, 1.0,
+	 -10.0, -2.0, -10.0,  1.0, 1.0, 1.0,
 	   
 
 		10.0, -2.0,  10.0,  1.0, 1.0 ,1.0,
-	   -10.0, -2.0,  10.0,  1.0, 1.0, 1.0,
+	 -10.0, -2.0,  10.0,  1.0, 1.0, 1.0,
 		10.0, -2.0, -10.0,  1.0, 1.0, 1.0
-	]);*/
-
+	]);
+/*
 	var verticesColors = new Float32Array([
 		10.0, -2.0, -10.0,
 	   -10.0, -2.0, -10.0,
@@ -404,7 +484,7 @@ function initWallVertexBuffers(gl) {
 		10.0, -2.0, -10.0,
 	   -10.0, -2.0,  10.0,
 		10.0, -2.0,  10.0,
-	]);
+	]);*/
 
 	var indices = new Float32Array([
 		0,1,2,  0,2,3
@@ -439,7 +519,7 @@ function initWallVertexBuffers(gl) {
 	gl.vertexAttribPointer(a_Position, 3, gl.FLOAT, false, FSIZE * 6, 0);
 	gl.enableVertexAttribArray(a_Position);
 
-/*
+
 	var a_Color = gl.getAttribLocation(gl.program, 'a_Color');
 	if(a_Color<0) {
 		console.log('Failed to get the storage location of a_Color')
@@ -448,12 +528,11 @@ function initWallVertexBuffers(gl) {
 	gl.vertexAttribPointer(a_Color, 3, gl.FLOAT, false, FSIZE * 6, FSIZE * 3);
 	gl.enableVertexAttribArray(a_Color);
 
-	gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertexColorBuffer);
-  	gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
-*/
+	//gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, vertexColorBuffer);
+  //gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, indices, gl.STATIC_DRAW);
 
 
-
+/*
 	var texcoordLocation = gl.getAttribLocation(gl.program, "a_texcoord");
 
 	var texcoordBuffer = gl.createBuffer();
@@ -484,10 +563,10 @@ function initWallVertexBuffers(gl) {
     	gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,gl.UNSIGNED_BYTE, image);
     	gl.generateMipmap(gl.TEXTURE_2D);
   	});
-	*/
+	
   	gl.vertexAttribPointer(texture, 2, gl.FLOAT, false, 0, 0);
 	gl.enableVertexAttribArray(texture);
-
+*/
   	
 
 
@@ -769,15 +848,16 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting, u_textureLocatio
   //draw the wall
   gl.uniform1i(u_isLighting, false);
 
-  gl.uniform1i(u_textureLocation, true);
+  //gl.uniform1i(u_textureLocation, true);
 
   var n = initWallVertexBuffers(gl)
   if(n < 0) {
-  	console.log('Failed to set the vertex information');
+  	console.log('Failed to set the wall vertex information');
   	return;
   }
 
   modelMatrix.setTranslate(0, 0, 0);
+  //modelMatrix.setColors(1.0, 1.0, 1.0);
 
   
   PushMatrix1(modelMatrix);
@@ -795,6 +875,7 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting, u_textureLocatio
     modelMatrix.translate(0, 3, -9);
     modelMatrix.scale(1, 0.5, 0.5);
     modelMatrix.rotate(90, 1, 0, 0);
+    //modelMatrix.c(0, 0, 0);
     PushMatrix1(modelMatrix);
       gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
       gl.drawArrays(gl.TRIANGLES, 0, n);
@@ -834,6 +915,63 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting, u_textureLocatio
       gl.drawArrays(gl.TRIANGLES, 0, n);
     modelMatrix = popMatrix1();
   modelMatrix = popMatrix1();*/
+
+  //draw the lamb
+  gl.uniform1i(u_isLighting, false);
+
+  var n = initLambVertexBuffers(gl);
+  if(n < 0) {
+    console.log('Failed to set the lamb vertex information');
+    return;
+  }
+
+  modelMatrix.setTranslate(0, 11, 0);
+  modelMatrix.rotate(angle_lamb * 1.5, 1, 0, 1);
+
+  //front leaf
+  PushMatrix1(modelMatrix);
+    //modelMatrix.translate(0, 0, 0);
+    //modelMatrix.scale(1, 1, 1); 
+    //modelMatrix.rotate(0, 0, 0, 0);
+    PushMatrix1(modelMatrix);
+      gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+      gl.drawArrays(gl.TRIANGLES, 0, n);
+    modelMatrix = popMatrix1();
+  modelMatrix = popMatrix1();
+
+  //right leaf
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(0, 0, 0);
+    modelMatrix.scale(1, 1, 1); 
+    modelMatrix.rotate(90, 0, 1, 0);
+    PushMatrix1(modelMatrix);
+      gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+      gl.drawArrays(gl.TRIANGLES, 0, n);
+    modelMatrix = popMatrix1();
+  modelMatrix = popMatrix1();
+
+  //left leaf
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(0, 0, 0);
+    modelMatrix.scale(1, 1, 1); 
+    modelMatrix.rotate(-90, 0, 1, 0);
+    PushMatrix1(modelMatrix);
+      gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+      gl.drawArrays(gl.TRIANGLES, 0, n);
+    modelMatrix = popMatrix1();
+  modelMatrix = popMatrix1();
+
+  //back leaf
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(0, 0, 0);
+    modelMatrix.scale(1, 1, 1); 
+    modelMatrix.rotate(180, 0, 1, 0);
+    PushMatrix1(modelMatrix);
+      gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
+      gl.drawArrays(gl.TRIANGLES, 0, n);
+    modelMatrix = popMatrix1();
+  modelMatrix = popMatrix1();
+
 }
 
 
