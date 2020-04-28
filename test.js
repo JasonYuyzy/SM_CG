@@ -71,16 +71,18 @@ var ANGLE_STEP = 3.0;  // The increments of rotation angle (degrees)
 var g_xAngle = 0.0;    // The rotation x angle (degrees)
 var g_yAngle = 0.0;    // The rotation y angle (degrees)
 var R_L_l = 0;
-var U_D_l = 20;
-var C_F_l = 30;
+var U_D_l = 10;
+var C_F_l = 50;
 var X_e = 0;
-var Y_e = 0;
-var Z_e = 0;
+var Y_e = 5;
+var Z_e = -5;
 var X = 0;
 var Y = 1;
 var Z = 0;
 var Q = 0;
 var angle_lamb = 0;
+var handle_angle = 0;
+var pull_box = -11;
 
 function main() {
   // Retrieve <canvas> element
@@ -126,33 +128,36 @@ function main() {
 
 
   if (!u_MvpMatrix || !u_ModelMatrix || !u_NormalMatrix ||
-      !u_LightPosition || !u_LightColor ||
+      !u_LightPosition || !u_LightColor || !u_Sampler ||
       !u_isTexture ) { 
     console.log('Failed to Get the storage locations of u_ModelMatrix, u_ViewMatrix, and/or u_ProjMatrix');
     return;
   }
 
+
+
   // Set the light color (white)
 
   document.onkeydown = function(ev){
+    //console.log(R_L_l, U_D_l, C_F_l, X_e, Y_e, Z_e);
     //alert(ev.keyCode);
     switch (ev.keyCode) {
       //moving the vertural camera
-      case 87: // key 'W'
-        C_F_l = C_F_l - 1;
+        case 87: // key 'W'
+          C_F_l = C_F_l - 1;
           //U_D_l = U_D_l - 1;
           Z_e = Z_e - 1;
           break;
-      case 83: // key 'S'
+        case 83: // key 'S'
           C_F_l = C_F_l + 1;
           //U_D_l = U_D_l + 1;
           Z_e = Z_e + 1
           break;
-      case 65: // key 'A'
+        case 65: // key 'A'
           R_L_l = R_L_l - 1;
           X_e = X_e - 1;
           break;
-      case 68: // key 'D'
+        case 68: // key 'D'
           R_L_l = R_L_l + 1;
           X_e = X_e + 1;
           break;
@@ -173,6 +178,14 @@ function main() {
         case 71: // key 'G'
           X_e = (X_e - 1) % 360;
           break;
+        case 73:
+          R_L_l = -12;
+          U_D_l = 11;
+          C_F_l = 2;
+          X_e = -12;
+          Y_e = 1; 
+          Z_e = -18;
+          break;
         case 74: // key 'J'
           X_e = (X_e + 1) % 360;
           break;
@@ -188,7 +201,31 @@ function main() {
       case 70:
         Q = Q + 1;
         break;
-        case 40: // Up arrow key -> the positive rotation of arm1 around the y-axis
+      case 79: //key 'O'
+        if (handle_angle < 90 || pull_box < -9){
+          if (handle_angle < 90){
+            handle_angle = handle_angle + 2;
+          }
+          else if (handle_angle == 90) {
+            pull_box = pull_box + 0.1;
+          }
+        }else{
+          break;
+        }
+        break;
+      case 80: //key 'P'
+        if (handle_angle > 0 || pull_box > -11){
+          if (pull_box > -11){
+            pull_box = pull_box - 0.1;
+          }
+          else if (pull_box == -11) {
+            handle_angle = handle_angle - 2;
+          }
+        }else{
+          break;
+        }
+        break;
+      case 40: // Up arrow key -> the positive rotation of arm1 around the y-axis
           g_xAngle = (g_xAngle + ANGLE_STEP) % 360;
           break;
       case 38: // Down arrow key -> the negative rotation of arm1 around the y-axis
@@ -221,14 +258,14 @@ function main() {
     
   }
 
+
   var plus = 0.3;
   //while(angle_lamb < 45 && angle_lamb > -45) 
   function draw() {
     angle_lamb += plus;
     shaking_light(gl, u_MvpMatrix, u_ModelMatrix, u_ViewMatrix, u_NormalMatrix, u_LightColor, u_LightPosition, u_isTexture, u_Sampler, canvas);
     requestAnimationFrame(draw);
-
-    //sleep(4);
+    
     if (angle_lamb > 45) {
       plus = -plus;
     }
@@ -240,15 +277,7 @@ function main() {
   draw();
 }
 
-function sleep(numberMillis) {
-    var now = new Date();
-    var exitTime = now.getTime() + numberMillis;
-    while (true) {
-        now = new Date();
-        if (now.getTime() > exitTime)
-            return;
-    }
-}
+
 
 function shaking_light (gl, u_MvpMatrix, u_ModelMatrix, u_ViewMatrix, u_NormalMatrix, u_LightColor, u_LightPosition, u_isTexture, u_Sampler, canvas) {
   gl.uniform3f(u_LightColor, 1.0, 1.0, 1.0);
@@ -431,26 +460,37 @@ function drawTexture(gl, n, u_Sampler) {
     console.log('Failed to careate the texture');
     return -1;
   }
+
   var image = new Image();
-  image.crossOrigin = "anonymous";
+  //image.crossOrigin = "anonymous";
   if (!image) {
     console.log('Fail to load the image');
     return -1;
   }
+
+  image.onload = function() { handleTextureLoaded(gl, cubeTexture, u_Sampler, image); }
+  //data_texture (gl, cubeTexture);
   image.src = "floor.jpg";
-  image.onload = function() { handleTextureLoaded(gl, cubeImage, cubeTexture); }
-  
-  //image.src = "floor.jpg";
 
-
-  function handleTextureLoaded(gl, image, texture) {
-    gl.piexlStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
-    gl.activeTexture(gl.TEXTURE);
+  function handleTextureLoaded(gl, texture, u_Sampler, image) {
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+    gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, texture);
-    //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, image);
+    //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    
+
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.uniform1i(u_Sampler, 0);
+    //gl.clear(gl.COLOR_BUFFER_BIT);
+  }
+    /*
     if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
-      gl.generateMipmap(gl.TEXTURE_2D);
+      //gl.generateMipmap(gl.TEXTURE_2D);
+      //gl.bindTexture(gl.TEXTURE_2D, null);
+      
     } 
     else 
     {
@@ -458,10 +498,45 @@ function drawTexture(gl, n, u_Sampler) {
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
     }
-    gl.bindTexture(gl.TEXTURE_2D, null);
-  }
 
-  gl.uniform1i(u_Sampler, 0);
+    function isPowerOf2(num) {
+      var a = 2;
+      while (a < num) {
+        a = a * 2;
+        b = num - a;
+        if (b == 0) {
+          return true;
+        }
+        else{
+          continue;
+        }
+      }
+      return false;
+    }
+  }
+  
+
+  
+  function data_texture (gl, cubeTexture) {
+    gl.bindTexture(gl.TEXTURE_2D, cubeTexture);
+    gl.activeTexture(gl.TEXTURE0);
+    const level = 0;
+    const internalFormat = gl.LUMINANCE;
+    const width = 3;
+    const height = 2;
+    const border = 0;
+    const format = gl.LUMINANCE;
+    const type = gl.UNSIGNED_BYTE;
+    const data = new Uint8Array([
+      128,  64, 128,
+        0, 192,   0,
+    ]);
+    gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1);
+    gl.texImage2D(gl.TEXTURE_2D, level, internalFormat, width, height, border, format, type, data);
+    //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  }*/
+
+  
   return;
 }
 
@@ -504,12 +579,12 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
   gl.uniform1i(u_isTexture, false); // Will apply lighting
 
   var colors = new Float32Array([    // Colors
-    1, 0, 0,   1, 0, 0,   1, 0, 0,  1, 0, 0,     // v0-v1-v2-v3 front
-    1, 0, 0,   1, 0, 0,   1, 0, 0,  1, 0, 0,     // v0-v3-v4-v5 right
-    1, 0, 0,   1, 0, 0,   1, 0, 0,  1, 0, 0,     // v0-v5-v6-v1 up
-    1, 0, 0,   1, 0, 0,   1, 0, 0,  1, 0, 0,     // v1-v6-v7-v2 left
-    1, 0, 0,   1, 0, 0,   1, 0, 0,  1, 0, 0,     // v7-v4-v3-v2 down
-    1, 0, 0,   1, 0, 0,   1, 0, 0,  1, 0, 0　    // v4-v7-v6-v5 back
+    1.0,1.0,0.9,  1.0, 1.0, 0.9,  1.0,1.0,0.9, 1.0,1.0,0.9,     // v0-v1-v2-v3 front
+    1.0,1.0,0.9,  1.0, 1.0, 0.9,  1.0,1.0,0.9, 1.0,1.0,0.9,     // v0-v3-v4-v5 right
+    1.0,1.0,0.9,  1.0, 1.0, 0.9,  1.0,1.0,0.9, 1.0,1.0,0.9,     // v0-v5-v6-v1 up
+    1.0,1.0,0.9,  1.0, 1.0, 0.9,  1.0,1.0,0.9, 1.0,1.0,0.9,     // v1-v6-v7-v2 left
+    1.0,1.0,0.9,  1.0, 1.0, 0.9,  1.0,1.0,0.9, 1.0,1.0,0.9,     // v7-v4-v3-v2 down
+    1.0,1.0,0.9,  1.0, 1.0, 0.9,  1.0,1.0,0.9, 1.0,1.0,0.9　    // v4-v7-v6-v5 back
   ]);
   // Set the vertex coordinates and color (for the cube)
   var n = initVertexBuffers1(gl, false, colors);
@@ -519,7 +594,7 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
   }
 
   // Rotate, and then translate
-  modelMatrix.setTranslate(5, 0, 0);  // Translation (No translation is supported here)
+  modelMatrix.setTranslate(4, 0, 0);  // Translation (No translation is supported here)
   modelMatrix.rotate(-90, 0, 1, 0); // Rotate along y axis
   modelMatrix.rotate(g_xAngle, 1, 0, 0); // Rotate along x axis
 
@@ -567,7 +642,7 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
 
 ////////Second Chair////////////////
   // Rotate, and then translate
-  modelMatrix.setTranslate(-5, 0, 0);  // Translation (No translation is supported here)
+  modelMatrix.setTranslate(-4, 0, 0);  // Translation (No translation is supported here)
   modelMatrix.rotate(90, 0, 1, 0); // Rotate along y axis
   modelMatrix.rotate(g_xAngle, 1, 0, 0); // Rotate along x axis
 
@@ -614,7 +689,7 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
 
 ////////Third Chair/////////////
 // Rotate, and then translate
-  modelMatrix.setTranslate(0, 0, -5);  // Translation (No translation is supported here)
+  modelMatrix.setTranslate(0, 0, -4);  // Translation (No translation is supported here)
   modelMatrix.rotate(0, 0, 1, 0); // Rotate along y axis
   modelMatrix.rotate(g_xAngle, 1, 0, 0); // Rotate along x axis
 
@@ -661,7 +736,7 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
 
 ////////Fourth Chair////////////
 // Rotate, and then translate
-  modelMatrix.setTranslate(0, 0, 5);  // Translation (No translation is supported here)
+  modelMatrix.setTranslate(0, 0, 4);  // Translation (No translation is supported here)
   modelMatrix.rotate(180, 0, 1, 0); // Rotate along y axis
   modelMatrix.rotate(g_xAngle, 1, 0, 0); // Rotate along x axis
 
@@ -710,12 +785,12 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
 
   gl.uniform1i(u_isTexture, false);
   var colors1 = new Float32Array([    // Colors
-    1, 0, 1,   1, 0, 1,   1, 0, 1,  1, 0, 1,     // v0-v1-v2-v3 front
-    1, 0, 1,   1, 0, 1,   1, 0, 1,  1, 0, 1,     // v0-v3-v4-v5 right
-    1, 0, 1,   1, 0, 1,   1, 0, 1,  1, 0, 1,     // v0-v5-v6-v1 up
-    1, 0, 1,   1, 0, 1,   1, 0, 1,  1, 0, 1,     // v1-v6-v7-v2 left
-    1, 0, 1,   1, 0, 1,   1, 0, 1,  1, 0, 1,     // v7-v4-v3-v2 down
-    1, 0, 1,   1, 0, 1,   1, 0, 1,  1, 0, 1　    // v4-v7-v6-v5 back
+    1.0,1.0,0.9,  1.0, 1.0, 0.9,  1.0,1.0,0.9, 1.0,1.0,0.9,     // v0-v1-v2-v3 front
+    1.0,1.0,0.9,  1.0, 1.0, 0.9,  1.0,1.0,0.9, 1.0,1.0,0.9,     // v0-v3-v4-v5 right
+    1.0,1.0,0.9,  1.0, 1.0, 0.9,  1.0,1.0,0.9, 1.0,1.0,0.9,     // v0-v5-v6-v1 up
+    1.0,1.0,0.9,  1.0, 1.0, 0.9,  1.0,1.0,0.9, 1.0,1.0,0.9,     // v1-v6-v7-v2 left
+    1.0,1.0,0.9,  1.0, 1.0, 0.9,  1.0,1.0,0.9, 1.0,1.0,0.9,     // v7-v4-v3-v2 down
+    1.0,1.0,0.9,  1.0, 1.0, 0.9,  1.0,1.0,0.9, 1.0,1.0,0.9　    // v4-v7-v6-v5 back
   ]);
   var n = initVertexBuffers1(gl, false, colors1);
   if (n < 0) {
@@ -762,35 +837,48 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
     drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
   modelMatrix = popMatrix1();
 
-  
-
-
-  //draw the floor
+  // draw the rope
   gl.uniform1i(u_isTexture, false);
-  var n = initVertexBuffers1(gl, false, false);
-  if (n < 0) {
-    console.log('Failed to set the vertex information');
+
+  var vertices = new Float32Array([   // Coordinates(x,y,z)
+     0.05, 0.0, 0.05,  -0.05, 0.0, 0.05,  -0.05,-3.0, 0.05,   0.05,-3.0, 0.05, // v0-v1-v2-v3 front
+     0.05, 0.0, 0.05,   0.05,-3.0, 0.05,   0.05,-3.0,-0.05,   0.05, 0.0,-0.05, // v0-v3-v4-v5 right
+     0.05, 0.0, 0.05,   0.05, 0.0,-0.05,  -0.05, 0.0,-0.05,  -0.05, 0.0, 0.05, // v0-v5-v6-v1 up
+    -0.05, 0.0, 0.05,  -0.05, 0.0,-0.05,  -0.05,-3.0,-0.05,  -0.05,-3.0, 0.05, // v1-v6-v7-v2 left
+    -0.05,-3.0,-0.05,   0.05,-3.0,-0.05,   0.05,-3.0, 0.05,  -0.05,-3.0, 0.05, // v7-v4-v3-v2 down
+     0.05,-3.0,-0.05,  -0.05,-3.0,-0.05,  -0.05, 0.0,-0.05,   0.05, 0.0,-0.05  // v4-v7-v6-v5 back
+  ]);
+
+  var colors2 = new Float32Array([    // Colors
+    1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1,   // v0-v1-v2-v3 front
+    1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1,   // v0-v3-v4-v5 right
+    1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1,   // v0-v5-v6-v1 up
+    1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1,   // v1-v6-v7-v2 left
+    1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1,   // v7-v4-v3-v2 down
+    1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1,   // v4-v7-v6-v5 back
+  ]);
+
+  var n = initVertexBuffers1(gl, vertices, colors2);
+  if(n < 0) {
+    console.log('Failed to set the lamb vertex information');
     return;
   }
 
-  //drawTexture (gl, n, u_Sampler);
-  //gl.clear(gl.COLOR_BUFFER_BIT);
+  modelMatrix.setTranslate(0, 9, 0);
+  modelMatrix.rotate(angle_lamb, 1, 0, 1);
 
-  // Rotate, and then translate
-  modelMatrix.setTranslate(0, -1.9, 0);  // Translation (No translation is supported here)
-  modelMatrix.rotate(0, 0, 1, 0); // Rotate along y axis
-  modelMatrix.rotate(g_xAngle, 1, 0, 0); // Rotate along x axis
-
-  // Model the floor surface
   PushMatrix1(modelMatrix);
-    modelMatrix.scale(15.0, 0.1, 15.0); // Scale
-    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+    //modelMatrix.translate(0, 0, 0);
+    //modelMatrix.rotate(45, 1, 0, 0);
+    PushMatrix1(modelMatrix);
+      //modelMatrix.scale(2.0, 2.0, 2.0); // Scale
+      drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+    modelMatrix = popMatrix1();
   modelMatrix = popMatrix1();
 
 
-  //draw the wall
   //draw the lamb
-  gl.uniform1i(u_isTexture, false);
+  //gl.uniform1i(u_isTexture, false);
 
   //    v6----- v5
   //   /|      /|
@@ -808,6 +896,8 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
      0.5,-3.5,-0.5,  -0.5,-3.5,-0.5,   0.0,-3.0, 0.0,   0.0,-3.0, 0.0  // v4-v7-v6-v5 back
   ]);
 
+  if (!initArrayBuffer1(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
+
   var colors2 = new Float32Array([    // Colors
     0.4,1.4,0.4,  0.4,1.4,0.4,  0.4,1.4,0.4, 0.4,1.4,0.4,   // v0-v1-v2-v3 front
     0.4,1.4,0.4,  0.4,1.4,0.4,  0.4,1.4,0.4, 0.4,1.4,0.4,   // v0-v3-v4-v5 right
@@ -817,18 +907,19 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
     0.4,1.4,0.4,  0.4,1.4,0.4,  0.4,1.4,0.4, 0.4,1.4,0.4,   // v4-v7-v6-v5 back
   ]);
 
+  if (!initArrayBuffer1(gl, 'a_Color', colors2, 3, gl.FLOAT)) return -1;
+  /*
   var n = initVertexBuffers1(gl, vertices, colors2);
   if(n < 0) {
     console.log('Failed to set the lamb vertex information');
     return;
   }
 
-  modelMatrix.setTranslate(0, 13, 0);
-  modelMatrix.rotate(angle_lamb * 1.5, 1, 0, 1);
-
-  //front leaf
+  modelMatrix.setTranslate(0, 11, 0);
+  modelMatrix.rotate(angle_lamb , 1, 0, 1);
+*/
   PushMatrix1(modelMatrix);
-    //modelMatrix.translate(0, 0, 0);
+    modelMatrix.translate(0, 3.5, 0);
     //modelMatrix.rotate(45, 1, 0, 0);
     PushMatrix1(modelMatrix);
       modelMatrix.scale(2.0, 2.0, 2.0); // Scale
@@ -836,38 +927,370 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
     modelMatrix = popMatrix1();
   modelMatrix = popMatrix1();
 
-  //right leaf
+
+  //draw the floor
+  gl.uniform1i(u_isTexture, true);
+  drawTexture (gl, n, u_Sampler);
+
+  var colors2 = new Float32Array([    // Colors
+    0.4,1.4,0.4,  0.4,1.4,0.4,  0.4,1.4,0.4, 0.4,1.4,0.4,   // v0-v1-v2-v3 front
+    0.4,1.4,0.4,  0.4,1.4,0.4,  0.4,1.4,0.4, 0.4,1.4,0.4,   // v0-v3-v4-v5 right
+    1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1,   // v0-v5-v6-v1 up
+    0.4,1.4,0.4,  0.4,1.4,0.4,  0.4,1.4,0.4, 0.4,1.4,0.4,   // v1-v6-v7-v2 left
+    0.4,1.4,0.4,  0.4,1.4,0.4,  0.4,1.4,0.4, 0.4,1.4,0.4,   // v7-v4-v3-v2 down
+    0.4,1.4,0.4,  0.4,1.4,0.4,  0.4,1.4,0.4, 0.4,1.4,0.4,   // v4-v7-v6-v5 back
+  ]);
+
+  var n = initVertexBuffers1(gl, false, colors2);
+  if (n < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+
+  
+  //gl.clear(gl.COLOR_BUFFER_BIT);
+
+  // Rotate, and then translate
+  modelMatrix.setTranslate(0, -1.9, 0);  // Translation (No translation is supported here)
+  modelMatrix.rotate(0, 0, 1, 0); // Rotate along y axis
+  modelMatrix.rotate(g_xAngle, 1, 0, 0); // Rotate along x axis
+
+  // Model the floor surface
   PushMatrix1(modelMatrix);
-    modelMatrix.translate(0, 0, 0);
-    modelMatrix.scale(1, 1, 1); 
-    modelMatrix.rotate(90, 0, 1, 0);
-    PushMatrix1(modelMatrix);
-      gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
-      //gl.drawArrays(gl.TRIANGLES, 0, n);
-    modelMatrix = popMatrix1();
+    modelMatrix.scale(40.0, 0.1, 30.0); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
   modelMatrix = popMatrix1();
 
-  //left leaf
+  
+  //draw the wall
+  gl.uniform1i(u_isTexture, false);
+
+  var colors2 = new Float32Array([    // Colors
+    1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1,   // v0-v1-v2-v3 front
+    1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1,   // v0-v3-v4-v5 right
+    1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1,   // v0-v5-v6-v1 up
+    1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1,   // v1-v6-v7-v2 left
+    1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1,   // v7-v4-v3-v2 down
+    1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1   // v4-v7-v6-v5 back
+  ]);
+
+  var n = initVertexBuffers1(gl, false, colors2);
+  if (n < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+
+  //drawTexture (gl, n, u_Sampler);
+  //gl.clear(gl.COLOR_BUFFER_BIT);
+
+  // Rotate, and then translate, start from back wall
+  modelMatrix.setTranslate(0, 4, -15);  // Translation (No translation is supported here)
+  //modelMatrix.rotate(90, 1, 0, 0); // Rotate along y axis
+  //modelMatrix.rotate(g_xAngle, 1, 0, 0); // Rotate along x axis
+  
+
+  // Model the back wall
   PushMatrix1(modelMatrix);
-    modelMatrix.translate(0, 0, 0);
-    modelMatrix.scale(1, 1, 1); 
-    modelMatrix.rotate(-90, 0, 1, 0);
-    PushMatrix1(modelMatrix);
-      gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
-      //gl.drawArrays(gl.TRIANGLES, 0, n);
-    modelMatrix = popMatrix1();
+    modelMatrix.scale(40.0, 12, 0.1); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
   modelMatrix = popMatrix1();
 
-  //back leaf
+  // Model the right side wall
   PushMatrix1(modelMatrix);
-    modelMatrix.translate(0, 0, 0);
-    modelMatrix.scale(1, 1, 1); 
-    modelMatrix.rotate(180, 0, 1, 0);
-    PushMatrix1(modelMatrix);
-      gl.uniformMatrix4fv(u_ModelMatrix, false, modelMatrix.elements);
-      //gl.drawArrays(gl.TRIANGLES, 0, n);
-    modelMatrix = popMatrix1();
+    modelMatrix.translate(20, 0, 15);
+    modelMatrix.scale(0.1, 12.0, 30.0); // Scale
+    modelMatrix.rotate(-90, 0, 1, 0); //rotate
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
   modelMatrix = popMatrix1();
+
+  // Model the left side wall_1
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(-20, -4, 15);
+    modelMatrix.scale(0.1, 4.0, 30.0); // Scale
+    modelMatrix.rotate(90, 0, 1, 0); //rotate
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  // Model the left side wall_2
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(-20, 0, 7);
+    modelMatrix.scale(0.1, 5.0, 14.0); // Scale
+    modelMatrix.rotate(90, 0, 1, 0); //rotate
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  // Model the left side wall_3
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(-20, 0, 25);
+    modelMatrix.scale(0.1, 5.0, 10.0); // Scale
+    modelMatrix.rotate(90, 0, 1, 0); //rotate
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  // Model the left side wall_4
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(-20, 4, 15);
+    modelMatrix.scale(0.1, 4.0, 30.0); // Scale
+    modelMatrix.rotate(90, 0, 1, 0); //rotate
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  
+
+  //draw the drawer
+  var colors2 = new Float32Array([    // Colors
+    1.2,0.6,0.1,  1.2,0.6,0.1,  1.2,0.6,0.1, 1.2,0.6,0.1,   // v0-v1-v2-v3 front
+    1.2,0.6,0.1,  1.2,0.6,0.1,  1.2,0.6,0.1, 1.2,0.6,0.1,   // v0-v3-v4-v5 right
+    1.2,0.6,0.1,  1.2,0.6,0.1,  1.2,0.6,0.1, 1.2,0.6,0.1,   // v0-v5-v6-v1 up
+    1.2,0.6,0.1,  1.2,0.6,0.1,  1.2,0.6,0.1, 1.2,0.6,0.1,   // v1-v6-v7-v2 left
+    1.2,0.6,0.1,  1.2,0.6,0.1,  1.2,0.6,0.1, 1.2,0.6,0.1,   // v7-v4-v3-v2 down
+    1.2,0.6,0.1,  1.2,0.6,0.1,  1.2,0.6,0.1, 1.2,0.6,0.1   // v4-v7-v6-v5 back
+  ]);
+
+  var n = initVertexBuffers1(gl, false, colors2);
+  if (n < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+  //draw the wall
+  modelMatrix.setTranslate(-13, 3, -11);
+  
+  // Model the drawer head
+  PushMatrix1(modelMatrix);
+    //modelMatrix.translate(-15, 4, 0);
+    modelMatrix.scale(3.0, 0.2, 2.1); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  //model the drawer down
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(0, -2, 0);
+    modelMatrix.scale(3.0, 0.2, 2.1); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  //model the drawer back
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(0, -1, -1);
+    modelMatrix.scale(3.0, 2.1, 0.2); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  //model the drawer side
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(-1.4, -1, 0);
+    modelMatrix.scale(0.2, 2.1, 2.1); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(1.4, -1, 0);
+    modelMatrix.scale(0.2, 2.1, 2.1); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  //Model the drawer leg
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(1.4, -3.4, 0.9);
+    modelMatrix.scale(0.2, 3.0, 0.2); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(1.4, -3.4, -0.9);
+    modelMatrix.scale(0.2, 3.0, 0.2); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(-1.4, -3.4, -0.9);
+    modelMatrix.scale(0.2, 3.0, 0.2); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(-1.4, -3.4, 0.9);
+    modelMatrix.scale(0.2, 3.0, 0.2); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+
+  //Draw the individural drawer inside
+  var colors2 = new Float32Array([    // Colors
+    1.0,0.4,0.1,  1.0,0.4,0.1,  1.0,0.4,0.1, 1.0,0.4,0.1,   // v0-v1-v2-v3 front
+    1.0,0.4,0.1,  1.0,0.4,0.1,  1.0,0.4,0.1, 1.0,0.4,0.1,   // v0-v3-v4-v5 right
+    1.0,0.4,0.1,  1.0,0.4,0.1,  1.0,0.4,0.1, 1.0,0.4,0.1,   // v0-v5-v6-v1 up
+    1.0,0.4,0.1,  1.0,0.4,0.1,  1.0,0.4,0.1, 1.0,0.4,0.1,   // v1-v6-v7-v2 left
+    1.0,0.4,0.1,  1.0,0.4,0.1,  1.0,0.4,0.1, 1.0,0.4,0.1,   // v7-v4-v3-v2 down
+    1.0,0.4,0.1,  1.0,0.4,0.1,  1.0,0.4,0.1, 1.0,0.4,0.1   // v4-v7-v6-v5 back
+  ]);
+
+  var n = initVertexBuffers1(gl, false, colors2);
+  if (n < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+  //draw the box
+  modelMatrix.setTranslate(-13, 3, pull_box);
+
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(0, -1.85, 0.0);
+    modelMatrix.scale(2.6, 0.15, 2.15); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(0, -0.85, -1.01);
+    modelMatrix.scale(2.6, 1.8, 0.15); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(-1.2, -0.85, 0);
+    modelMatrix.scale(0.15, 1.8, 2.15); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(1.2, -0.85, 0);
+    modelMatrix.scale(0.15, 1.8, 2.15); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(0, -0.85, 1.01);
+    modelMatrix.scale(2.6, 1.8, 0.15); // Scale
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(-0.4, -0.3, 1.2);
+    modelMatrix.rotate(handle_angle, 0, 0, 1);
+    //draw the handle
+    PushMatrix1(modelMatrix);
+      modelMatrix.scale(0.2, 0.2, 0.4); // Scale
+      drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+    modelMatrix = popMatrix1();
+
+    PushMatrix1(modelMatrix);
+      modelMatrix.translate(0, 0, 0.4);
+      modelMatrix.scale(0.9, 0.2, 0.2); // Scale
+      drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+    modelMatrix = popMatrix1();
+
+  modelMatrix = popMatrix1();
+
+  //Draw a sofa
+
+  var colors2 = new Float32Array([    // Colors
+    0.2,0.2,0.4,  0.2,0.2,0.4,  0.2,0.2,0.4, 0.2,0.2,0.4,   // v0-v1-v2-v3 front
+    0.2,0.2,0.4,  0.2,0.2,0.4,  0.2,0.2,0.4, 0.2,0.2,0.4,   // v0-v3-v4-v5 right
+    0.2,0.2,0.4,  0.2,0.2,0.4,  0.2,0.2,0.4, 0.2,0.2,0.4,   // v0-v5-v6-v1 up
+    0.2,0.2,0.4,  0.2,0.2,0.4,  0.2,0.2,0.4, 0.2,0.2,0.4,   // v1-v6-v7-v2 left
+    0.2,0.2,0.4,  0.2,0.2,0.4,  0.2,0.2,0.4, 0.2,0.2,0.4,   // v7-v4-v3-v2 down
+    0.2,0.2,0.4,  0.2,0.2,0.4,  0.2,0.2,0.4, 0.2,0.2,0.4   // v4-v7-v6-v5 back
+  ]);
+
+  var n = initVertexBuffers1(gl, false, colors2);
+  if (n < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+  //draw the wall
+  modelMatrix.setTranslate(10, -0.3, 1);
+  modelMatrix.scale(1, 3, 14);
+
+  PushMatrix1(modelMatrix);
+    modelMatrix.rotate(4, 0, 0, 1);
+    modelMatrix.translate(0, -0.01, 0);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(1.47, -0.35, 0);
+    modelMatrix.scale(2.5, 0.3, 1);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(1.47, -0.3, -0.5);
+    modelMatrix.scale(2.5, 0.5, 0.2);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  PushMatrix1(modelMatrix);
+    modelMatrix.translate(1.47, -0.3, 0.5);
+    modelMatrix.scale(2.5, 0.5, 0.2);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+  // draw the TV
+  //Draw a sofa
+
+  //    v6----- v5
+  //   /|      /|
+  //  v1------v0|
+  //  | |     | |
+  //  | |v7---|-|v4
+  //  |/      |/
+  //  v2------v3
+
+  var vertices = new Float32Array([   // Coordinates(x,y,z)
+     2.3, 1.6, 1.0,  2.0, 3.0, 2.0,  2.0, 1.0, 2.0,  2.3, 1.0, 1.0, // v0-v1-v2-v3 front
+     2.3, 1.6, 1.0,  2.3, 1.0, 1.0,  2.3, 1.0,-1.0,  2.3, 1.6,-1.0, // v0-v3-v4-v5 right
+     2.3, 1.6, 1.0,  2.3, 1.6,-1.0,  2.0, 3.0,-2.0,  2.0, 3.0, 2.0, // v0-v5-v6-v1 up
+     2.0, 3.0, 2.0,  2.0, 3.0,-2.0,  2.0, 1.0,-2.0,  2.0, 1.0, 2.0, // v1-v6-v7-v2 left
+     2.0, 1.0,-2.0,  2.3, 1.0,-1.0,  2.3, 1.0, 1.0,  2.0, 1.0, 2.0, // v7-v4-v3-v2 down
+     2.3, 1.0,-1.0,  2.0, 1.0,-2.0,  2.0, 3.0,-2.0,  2.3, 1.6,-1.0  // v4-v7-v6-v5 back
+  ]);
+
+  var colors2 = new Float32Array([    // Colors
+    0.2,0.2,0.3,  0.2,0.2,0.3,  0.2,0.2,0.3, 0.2,0.2,0.3,   // v0-v1-v2-v3 front
+    0.2,0.2,0.3,  0.2,0.2,0.3,  0.2,0.2,0.3, 0.2,0.2,0.3,   // v0-v3-v4-v5 right
+    0.2,0.2,0.3,  0.2,0.2,0.3,  0.2,0.2,0.3, 0.2,0.2,0.3,   // v0-v5-v6-v1 up
+    0.2,0.2,0.3,  0.2,0.2,0.3,  0.2,0.2,0.3, 0.2,0.2,0.3,   // v1-v6-v7-v2 left
+    0.2,0.2,0.3,  0.2,0.2,0.3,  0.2,0.2,0.3, 0.2,0.2,0.3,   // v7-v4-v3-v2 down
+    0.2,0.2,0.3,  0.2,0.2,0.3,  0.2,0.2,0.3, 0.2,0.2,0.3   // v4-v7-v6-v5 back
+  ]);
+
+  var n = initVertexBuffers1(gl, vertices, colors2);
+  if (n < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+  //draw the wall
+  modelMatrix.setTranslate(17.3, 0, 1);
+  modelMatrix.scale(1, 2, 2.5);
+
+  PushMatrix1(modelMatrix);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+ //tracking point
+
+ var colors2 = new Float32Array([    // Colors
+    0.0,0.5,0.0,  0.0,0.5,0.0,  0.0,0.5,0.0, 0.0,0.5,0.0,   // v0-v1-v2-v3 front
+    0.0,0.5,0.0,  0.0,0.5,0.0,  0.0,0.5,0.0, 0.0,0.5,0.0,   // v0-v3-v4-v5 right
+    0.0,0.5,0.0,  0.0,0.5,0.0,  0.0,0.5,0.0, 0.0,0.5,0.0,   // v0-v5-v6-v1 up
+    0.0,0.5,0.0,  0.0,0.5,0.0,  0.0,0.5,0.0, 0.0,0.5,0.0,   // v1-v6-v7-v2 left
+    0.0,0.5,0.0,  0.0,0.5,0.0,  0.0,0.5,0.0, 0.0,0.5,0.0,   // v7-v4-v3-v2 down
+    0.0,0.5,0.0,  0.0,0.5,0.0,  0.0,0.5,0.0, 0.0,0.5,0.0   // v4-v7-v6-v5 back
+  ]);
+
+  var n = initVertexBuffers1(gl, false, colors2);
+  if (n < 0) {
+    console.log('Failed to set the vertex information');
+    return;
+  }
+
+  modelMatrix.setTranslate(X_e, Y_e, Z_e);
+  modelMatrix.scale(0.5, 0.5, 0.5);
+
+  PushMatrix1(modelMatrix);
+    drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
+  modelMatrix = popMatrix1();
+
+
 
 }
 
