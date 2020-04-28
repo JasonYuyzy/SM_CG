@@ -6,8 +6,7 @@ var VSHADER_SOURCE =
   'attribute vec4 a_Normal;\n' +
   'attribute vec2 a_TexCoords;\n' +
 
-  'uniform mat4 u_MvpMatrix;\n' +
-  //'uniform vec3 u_lightWorldPosition;' +
+  'uniform mat4 u_ProjMatrix;\n' +
   'uniform mat4 u_ModelMatrix;\n' +
   'uniform mat4 u_ViewMatrix;\n' +
   'uniform mat4 u_NormalMatrix;\n' +
@@ -18,7 +17,7 @@ var VSHADER_SOURCE =
   'varying vec2 v_TexCoords;\n' +
 
   'void main() {\n' +
-  '  gl_Position = u_MvpMatrix * u_ViewMatrix * u_ModelMatrix * a_Position;\n' +
+  '  gl_Position = u_ProjMatrix * u_ViewMatrix * u_ModelMatrix * a_Position;\n' +
   '  v_Position = vec3(u_ModelMatrix * a_Position);\n' +
   '  v_Normal = normalize(vec3(u_NormalMatrix * a_Normal));\n' +
   '  v_Color = a_Color;\n' +
@@ -36,7 +35,7 @@ var FSHADER_SOURCE =
   'uniform bool u_isTexture;\n' +
   'uniform vec3 u_LightColor;\n' +
   'uniform vec3 u_LightPosition;\n' +
-  //'uniform vec3 u_AmbientLight;\n' +
+  'uniform vec3 u_AmbientLight;\n' +
   'varying vec3 v_Normal;\n' +
   'varying vec3 v_Position;\n' +
   'varying vec4 v_Color;\n' +
@@ -58,8 +57,8 @@ var FSHADER_SOURCE =
   '  {\n' +
   '     diffuse = u_LightColor * v_Color.rgb * nDotL;\n' +
   '  }\n' +
-  //'  vec3 ambient = u_AmbientLight * v_Color.rgb;\n' +
-  '  gl_FragColor = vec4(diffuse, v_Color.a);\n' +
+  '  vec3 ambient = u_AmbientLight * v_Color.rgb;\n' +
+  '  gl_FragColor = vec4(diffuse + ambient, v_Color.a);\n' +
   '}\n';
 
 var modelMatrix = new Matrix4(); // The model matrix
@@ -83,6 +82,8 @@ var Q = 0;
 var angle_lamb = 0;
 var handle_angle = 0;
 var pull_box = -11;
+
+
 
 function main() {
   // Retrieve <canvas> element
@@ -109,34 +110,33 @@ function main() {
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Get the storage locations of uniform attributes
-  var u_MvpMatrix = gl.getUniformLocation(gl.program, 'u_MvpMatrix');
+  var u_ProjMatrix = gl.getUniformLocation(gl.program, 'u_ProjMatrix');
   var u_ModelMatrix = gl.getUniformLocation(gl.program, 'u_ModelMatrix');
   var u_ViewMatrix = gl.getUniformLocation(gl.program, 'u_ViewMatrix');
   var u_NormalMatrix = gl.getUniformLocation(gl.program, 'u_NormalMatrix');
   var u_LightColor = gl.getUniformLocation(gl.program, 'u_LightColor');
   var u_LightPosition = gl.getUniformLocation(gl.program, 'u_LightPosition');
-  //var u_AmbientLight = gl.getUniformLocation(gl.program, 'u_AmbientLight');
+  var u_AmbientLight = gl.getUniformLocation(gl.program, 'u_AmbientLight');
 
   // Trigger using lighting or not
   var u_isTexture = gl.getUniformLocation(gl.program, 'u_isTexture'); 
-
-
 
   //mapping
   var u_Sampler = gl.getUniformLocation(gl.program, "u_Sampler");
 
 
 
-  if (!u_MvpMatrix || !u_ModelMatrix || !u_NormalMatrix ||
-      !u_LightPosition || !u_LightColor || !u_Sampler ||
+  if (!u_ProjMatrix || !u_ModelMatrix || !u_NormalMatrix ||
+      !u_LightPosition || !u_LightColor || !u_Sampler || !u_AmbientLight ||
       !u_isTexture ) { 
     console.log('Failed to Get the storage locations of u_ModelMatrix, u_ViewMatrix, and/or u_ProjMatrix');
     return;
   }
 
-
-
-  // Set the light color (white)
+  //Store the texture
+  var textureStorage = [];
+  let texture_folder = ["./floor.jpg", "./head.png"];
+  var textureStorage = store_texture(texture_folder, textureStorage);
 
   document.onkeydown = function(ev){
     //console.log(R_L_l, U_D_l, C_F_l, X_e, Y_e, Z_e);
@@ -245,6 +245,7 @@ function main() {
     gl.uniform3f(u_LightColor, 1.0, 1.0, 1.0);
     // Set the light direction (in the world coordinate)
     gl.uniform3fv(u_LightPosition, [angle_lamb / 7, 4.0, -angle_lamb / 7]);
+    gl.uniform3f(u_AmbientLight, 0.0, 5.0, 0.0);
     
     //viewMatrix.lookAt(0, 0, 0);
     viewMatrix.setLookAt(R_L_l, U_D_l, C_F_l, X_e, Y_e, Z_e, X, Y, Z);
@@ -252,9 +253,9 @@ function main() {
     projMatrix.setPerspective(40, canvas.width/canvas.height, 1, 100);
     // Pass the model, view, and projection matrix to the uniform variable respectively
     gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
-    gl.uniformMatrix4fv(u_MvpMatrix, false, projMatrix.elements);
+    gl.uniformMatrix4fv(u_ProjMatrix, false, projMatrix.elements);
 
-    draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler);
+    draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler, textureStorage);
     
   }
 
@@ -263,7 +264,7 @@ function main() {
   //while(angle_lamb < 45 && angle_lamb > -45) 
   function draw() {
     angle_lamb += plus;
-    shaking_light(gl, u_MvpMatrix, u_ModelMatrix, u_ViewMatrix, u_NormalMatrix, u_LightColor, u_LightPosition, u_isTexture, u_Sampler, canvas);
+    shaking_light(gl, u_ProjMatrix, u_ModelMatrix, u_ViewMatrix, u_NormalMatrix, u_LightColor, u_LightPosition, u_isTexture, u_Sampler, canvas, textureStorage);
     requestAnimationFrame(draw);
     
     if (angle_lamb > 45) {
@@ -274,12 +275,35 @@ function main() {
     }
     angle_lamb += plus;
   }
-  draw();
+
+
+  function store_texture (texture_folder, textureStorage) {
+    var cubeTexture = gl.createTexture();
+    if(! cubeTexture) {
+      console.log('Failed to careate the texture');
+      return -1;
+    }
+    cubeTexture.image = new Image();
+    if(! cubeTexture.image) {
+      console.log('Failed to careate the iamge for texture');
+      return -1;
+    }
+    textureStorage.push(cubeTexture);
+
+    while (texture_folder.length != 0) {
+      textureStorage[textureStorage.length - 1].image.src = texture_folder[0];
+      //delete a folder and continue to create a new texture
+      texture_folder.splice(0,1);
+      store_texture(texture_folder, textureStorage);
+    }
+    //finish the storage and continue
+    return textureStorage;
+  }
 }
 
 
 
-function shaking_light (gl, u_MvpMatrix, u_ModelMatrix, u_ViewMatrix, u_NormalMatrix, u_LightColor, u_LightPosition, u_isTexture, u_Sampler, canvas) {
+function shaking_light (gl, u_ProjMatrix, u_ModelMatrix, u_ViewMatrix, u_NormalMatrix, u_LightColor, u_LightPosition, u_isTexture, u_Sampler, canvas, textureStorage) {
   gl.uniform3f(u_LightColor, 1.0, 1.0, 1.0);
   // Set the light direction (in the world coordinate)
   gl.uniform3fv(u_LightPosition, [angle_lamb / 7, 4.0, -angle_lamb / 7]);
@@ -298,9 +322,9 @@ function shaking_light (gl, u_MvpMatrix, u_ModelMatrix, u_ViewMatrix, u_NormalMa
   projMatrix.setPerspective(40, canvas.width/canvas.height, 1, 100);
   // Pass the model, view, and projection matrix to the uniform variable respectively
   gl.uniformMatrix4fv(u_ViewMatrix, false, viewMatrix.elements);
-  gl.uniformMatrix4fv(u_MvpMatrix, false, projMatrix.elements);
+  gl.uniformMatrix4fv(u_ProjMatrix, false, projMatrix.elements);
 
-  draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler);
+  draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler, textureStorage);
 }
 
 
@@ -333,6 +357,15 @@ function initVertexBuffers1(gl, new_vertices, colors) {
     0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0,   0.0, 0.0,-1.0   // v4-v7-v6-v5 back
   ]);
 
+  var texCoords = new Float32Array([
+        1.0, 1.0,    0.0, 1.0,   0.0, 0.0,   1.0, 0.0,  // v0-v1-v2-v3 front
+        0.0, 1.0,    0.0, 0.0,   1.0, 0.0,   1.0, 1.0,  // v0-v3-v4-v5 right
+        1.0, 0.0,    1.0, 1.0,   0.0, 1.0,   0.0, 0.0,  // v0-v5-v6-v1 up
+        1.0, 1.0,    0.0, 1.0,   0.0, 0.0,   1.0, 0.0,  // v1-v6-v7-v2 left
+        0.0, 0.0,    1.0, 0.0,   1.0, 1.0,   0.0, 1.0,  // v7-v4-v3-v2 down
+        0.0, 0.0,    1.0, 0.0,   1.0, 1.0,   0.0, 1.0   // v4-v7-v6-v5 back
+  ]);
+
 
   // Indices of the vertices
   var indices = new Uint8Array([
@@ -356,8 +389,9 @@ function initVertexBuffers1(gl, new_vertices, colors) {
     if (!initArrayBuffer1(gl, 'a_Color', colors, 3, gl.FLOAT)) return -1;
   }
   if (!initArrayBuffer1(gl, 'a_Normal', normals, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer1(gl, 'a_TexCoords', texCoords, 2, gl.FLOAT)) return -1;
 
-
+  
 
   var textureBuffer = gl.createBuffer();
   if (!textureBuffer) {
@@ -400,8 +434,8 @@ function initArrayBuffer1 (gl, attribute, data, num, type) {
   gl.vertexAttribPointer(a_attribute, num, type, false, 0, 0);
   // Enable the assignment of the buffer object to the attribute variable
   gl.enableVertexAttribArray(a_attribute);
-
   gl.bindBuffer(gl.ARRAY_BUFFER, null);
+  
   return true;
 }
 
@@ -454,69 +488,49 @@ function initAxesVertexBuffers1(gl) {
   return n;
 }
 
-function drawTexture(gl, n, u_Sampler) {
-  cubeTexture = gl.createTexture();
-  if(! cubeTexture) {
-    console.log('Failed to careate the texture');
-    return -1;
-  }
+var image = new Image();
+//image.crossOrigin = "anonymous";
+if (!image) {
+  console.log('Fail to load the image');
+}
 
-  var image = new Image();
-  //image.crossOrigin = "anonymous";
-  if (!image) {
-    console.log('Fail to load the image');
-    return -1;
-  }
-
-  image.onload = function() { handleTextureLoaded(gl, cubeTexture, u_Sampler, image); }
-  //data_texture (gl, cubeTexture);
-  image.src = "floor.jpg";
-
-  function handleTextureLoaded(gl, texture, u_Sampler, image) {
-    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
-    gl.activeTexture(gl.TEXTURE0);
-    gl.bindTexture(gl.TEXTURE_2D, texture);
-    //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+function drawTexture(gl, n, u_Sampler, cubeTexture) {
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, 1);
+  gl.activeTexture(gl.TEXTURE0);
+  gl.bindTexture(gl.TEXTURE_2D, cubeTexture);
+  gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, cubeTexture.image);
     
-
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGB, gl.RGB, gl.UNSIGNED_BYTE, image);
+  if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+  } 
+  else 
+  {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.uniform1i(u_Sampler, 0);
-    //gl.clear(gl.COLOR_BUFFER_BIT);
   }
-    /*
-    if (isPowerOf2(image.width) && isPowerOf2(image.height)) {
-      //gl.generateMipmap(gl.TEXTURE_2D);
-      //gl.bindTexture(gl.TEXTURE_2D, null);
-      
-    } 
-    else 
-    {
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    }
+  gl.uniform1i(u_Sampler, 0);
+  gl.clear(gl.COLOR_BUFFER_BIT);
 
-    function isPowerOf2(num) {
-      var a = 2;
-      while (a < num) {
-        a = a * 2;
-        b = num - a;
-        if (b == 0) {
-          return true;
-        }
-        else{
-          continue;
-        }
+  function isPowerOf2(num) {
+    var a = 2;
+    while (a < num) {
+      a = a * 2;
+      b = num - a;
+      if (b == 0) {
+        return true;
       }
-      return false;
+      else{
+        //console.log("goog");
+        continue;
+      }
     }
+    return false;
   }
+}
   
 
-  
+  /*
   function data_texture (gl, cubeTexture) {
     gl.bindTexture(gl.TEXTURE_2D, cubeTexture);
     gl.activeTexture(gl.TEXTURE0);
@@ -536,9 +550,6 @@ function drawTexture(gl, n, u_Sampler) {
     //gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
   }*/
 
-  
-  return;
-}
 
 
 var g_matrixStack = []; // Array for storing a matrix
@@ -551,7 +562,7 @@ function popMatrix1() { // Retrieve the matrix from the array
   return g_matrixStack.pop();
 }
 
-function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
+function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler, textureStorage) {
 
   // Clear color and depth buffer
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -782,7 +793,7 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
   modelMatrix = popMatrix1();
 
 ////////Desk////////////////////
-
+  /*
   gl.uniform1i(u_isTexture, false);
   var colors1 = new Float32Array([    // Colors
     1.0,1.0,0.9,  1.0, 1.0, 0.9,  1.0,1.0,0.9, 1.0,1.0,0.9,     // v0-v1-v2-v3 front
@@ -792,11 +803,14 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
     1.0,1.0,0.9,  1.0, 1.0, 0.9,  1.0,1.0,0.9, 1.0,1.0,0.9,     // v7-v4-v3-v2 down
     1.0,1.0,0.9,  1.0, 1.0, 0.9,  1.0,1.0,0.9, 1.0,1.0,0.9　    // v4-v7-v6-v5 back
   ]);
+
+  if (!initArrayBuffer1(gl, 'a_Color', colors1, 3, gl.FLOAT)) return -1;
+
   var n = initVertexBuffers1(gl, false, colors1);
   if (n < 0) {
     console.log('Failed to set the vertex information');
     return;
-  }
+  }*/
   
 // Rotate, and then translate
   modelMatrix.setTranslate(0, 1.5, 0);  // Translation (No translation is supported here)
@@ -839,7 +853,7 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
 
   // draw the rope
   gl.uniform1i(u_isTexture, false);
-
+  /*
   var vertices = new Float32Array([   // Coordinates(x,y,z)
      0.05, 0.0, 0.05,  -0.05, 0.0, 0.05,  -0.05,-3.0, 0.05,   0.05,-3.0, 0.05, // v0-v1-v2-v3 front
      0.05, 0.0, 0.05,   0.05,-3.0, 0.05,   0.05,-3.0,-0.05,   0.05, 0.0,-0.05, // v0-v3-v4-v5 right
@@ -848,6 +862,8 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
     -0.05,-3.0,-0.05,   0.05,-3.0,-0.05,   0.05,-3.0, 0.05,  -0.05,-3.0, 0.05, // v7-v4-v3-v2 down
      0.05,-3.0,-0.05,  -0.05,-3.0,-0.05,  -0.05, 0.0,-0.05,   0.05, 0.0,-0.05  // v4-v7-v6-v5 back
   ]);
+
+  if (!initArrayBuffer1(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
 
   var colors2 = new Float32Array([    // Colors
     1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1,   // v0-v1-v2-v3 front
@@ -858,11 +874,13 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
     1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1,   // v4-v7-v6-v5 back
   ]);
 
+  if (!initArrayBuffer1(gl, 'a_Color', colors2, 3, gl.FLOAT)) return -1;
+
   var n = initVertexBuffers1(gl, vertices, colors2);
   if(n < 0) {
     console.log('Failed to set the lamb vertex information');
     return;
-  }
+  }*/
 
   modelMatrix.setTranslate(0, 9, 0);
   modelMatrix.rotate(angle_lamb, 1, 0, 1);
@@ -886,7 +904,7 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
   //  | |     | |
   //  | |v7---|-|v4
   //  |/      |/
-  //  v2------v3
+ /*  //  v2------v3 
   var vertices = new Float32Array([   // Coordinates(x,y,z)
      0.0,-3.0, 0.0,   0.0,-3.0, 0.0,  -0.5,-3.5, 0.5,   0.5,-3.5, 0.5, // v0-v1-v2-v3 front
      0.0,-3.0, 0.0,   0.5,-3.5, 0.5,   0.5,-3.5,-0.5,   0.0,-3.0, 0.0, // v0-v3-v4-v5 right
@@ -896,7 +914,7 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
      0.5,-3.5,-0.5,  -0.5,-3.5,-0.5,   0.0,-3.0, 0.0,   0.0,-3.0, 0.0  // v4-v7-v6-v5 back
   ]);
 
-  if (!initArrayBuffer1(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
+  
 
   var colors2 = new Float32Array([    // Colors
     0.4,1.4,0.4,  0.4,1.4,0.4,  0.4,1.4,0.4, 0.4,1.4,0.4,   // v0-v1-v2-v3 front
@@ -906,9 +924,9 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
     0.4,1.4,0.4,  0.4,1.4,0.4,  0.4,1.4,0.4, 0.4,1.4,0.4,   // v7-v4-v3-v2 down
     0.4,1.4,0.4,  0.4,1.4,0.4,  0.4,1.4,0.4, 0.4,1.4,0.4,   // v4-v7-v6-v5 back
   ]);
-
+  if (!initArrayBuffer1(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
   if (!initArrayBuffer1(gl, 'a_Color', colors2, 3, gl.FLOAT)) return -1;
-  /*
+
   var n = initVertexBuffers1(gl, vertices, colors2);
   if(n < 0) {
     console.log('Failed to set the lamb vertex information');
@@ -929,9 +947,8 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
 
 
   //draw the floor
-  gl.uniform1i(u_isTexture, true);
-  drawTexture (gl, n, u_Sampler);
-
+  
+ /* 
   var colors2 = new Float32Array([    // Colors
     0.4,1.4,0.4,  0.4,1.4,0.4,  0.4,1.4,0.4, 0.4,1.4,0.4,   // v0-v1-v2-v3 front
     0.4,1.4,0.4,  0.4,1.4,0.4,  0.4,1.4,0.4, 0.4,1.4,0.4,   // v0-v3-v4-v5 right
@@ -941,12 +958,15 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
     0.4,1.4,0.4,  0.4,1.4,0.4,  0.4,1.4,0.4, 0.4,1.4,0.4,   // v4-v7-v6-v5 back
   ]);
 
+  if (!initArrayBuffer1(gl, 'a_Color', colors2, 3, gl.FLOAT)) return -1;
+
   var n = initVertexBuffers1(gl, false, colors2);
   if (n < 0) {
     console.log('Failed to set the vertex information');
     return;
-  }
-
+  }*/
+  drawTexture (gl, n, u_Sampler, textureStorage[0]);
+  gl.uniform1i(u_isTexture, true);
   
   //gl.clear(gl.COLOR_BUFFER_BIT);
 
@@ -957,6 +977,7 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
 
   // Model the floor surface
   PushMatrix1(modelMatrix);
+    
     modelMatrix.scale(40.0, 0.1, 30.0); // Scale
     drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
   modelMatrix = popMatrix1();
@@ -964,7 +985,7 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
   
   //draw the wall
   gl.uniform1i(u_isTexture, false);
-
+/*
   var colors2 = new Float32Array([    // Colors
     1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1,   // v0-v1-v2-v3 front
     1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1,   // v0-v3-v4-v5 right
@@ -974,11 +995,13 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
     1.4,0.8,0.1,  1.4,0.8,0.1,  1.4,0.8,0.1, 1.4,0.8,0.1   // v4-v7-v6-v5 back
   ]);
 
+  if (!initArrayBuffer1(gl, 'a_Color', colors2, 3, gl.FLOAT)) return -1;
+
   var n = initVertexBuffers1(gl, false, colors2);
   if (n < 0) {
     console.log('Failed to set the vertex information');
     return;
-  }
+  }*/
 
   //drawTexture (gl, n, u_Sampler);
   //gl.clear(gl.COLOR_BUFFER_BIT);
@@ -1038,6 +1061,7 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
   
 
   //draw the drawer
+  /*
   var colors2 = new Float32Array([    // Colors
     1.2,0.6,0.1,  1.2,0.6,0.1,  1.2,0.6,0.1, 1.2,0.6,0.1,   // v0-v1-v2-v3 front
     1.2,0.6,0.1,  1.2,0.6,0.1,  1.2,0.6,0.1, 1.2,0.6,0.1,   // v0-v3-v4-v5 right
@@ -1046,17 +1070,18 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
     1.2,0.6,0.1,  1.2,0.6,0.1,  1.2,0.6,0.1, 1.2,0.6,0.1,   // v7-v4-v3-v2 down
     1.2,0.6,0.1,  1.2,0.6,0.1,  1.2,0.6,0.1, 1.2,0.6,0.1   // v4-v7-v6-v5 back
   ]);
+  if (!initArrayBuffer1(gl, 'a_Color', colors2, 3, gl.FLOAT)) return -1;
+*/
 
-  var n = initVertexBuffers1(gl, false, colors2);
-  if (n < 0) {
-    console.log('Failed to set the vertex information');
-    return;
-  }
+  drawTexture (gl, n, u_Sampler, textureStorage[0]);
+  gl.uniform1i(u_isTexture, true);
+  
   //draw the wall
   modelMatrix.setTranslate(-13, 3, -11);
   
   // Model the drawer head
   PushMatrix1(modelMatrix);
+  
     //modelMatrix.translate(-15, 4, 0);
     modelMatrix.scale(3.0, 0.2, 2.1); // Scale
     drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
@@ -1116,6 +1141,7 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
 
 
   //Draw the individural drawer inside
+/*
   var colors2 = new Float32Array([    // Colors
     1.0,0.4,0.1,  1.0,0.4,0.1,  1.0,0.4,0.1, 1.0,0.4,0.1,   // v0-v1-v2-v3 front
     1.0,0.4,0.1,  1.0,0.4,0.1,  1.0,0.4,0.1, 1.0,0.4,0.1,   // v0-v3-v4-v5 right
@@ -1125,15 +1151,15 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
     1.0,0.4,0.1,  1.0,0.4,0.1,  1.0,0.4,0.1, 1.0,0.4,0.1   // v4-v7-v6-v5 back
   ]);
 
-  var n = initVertexBuffers1(gl, false, colors2);
-  if (n < 0) {
-    console.log('Failed to set the vertex information');
-    return;
-  }
+  if (!initArrayBuffer1(gl, 'a_Color', colors2, 3, gl.FLOAT)) return -1;
+*/
+  drawTexture (gl, n, u_Sampler, textureStorage[0]);
+  gl.uniform1i(u_isTexture, true);
   //draw the box
   modelMatrix.setTranslate(-13, 3, pull_box);
 
   PushMatrix1(modelMatrix);
+  
     modelMatrix.translate(0, -1.85, 0.0);
     modelMatrix.scale(2.6, 0.15, 2.15); // Scale
     drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
@@ -1181,7 +1207,8 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
   modelMatrix = popMatrix1();
 
   //Draw a sofa
-
+/*
+  gl.uniform1i(u_isTexture, false);
   var colors2 = new Float32Array([    // Colors
     0.2,0.2,0.4,  0.2,0.2,0.4,  0.2,0.2,0.4, 0.2,0.2,0.4,   // v0-v1-v2-v3 front
     0.2,0.2,0.4,  0.2,0.2,0.4,  0.2,0.2,0.4, 0.2,0.2,0.4,   // v0-v3-v4-v5 right
@@ -1191,15 +1218,11 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
     0.2,0.2,0.4,  0.2,0.2,0.4,  0.2,0.2,0.4, 0.2,0.2,0.4   // v4-v7-v6-v5 back
   ]);
 
-  var n = initVertexBuffers1(gl, false, colors2);
-  if (n < 0) {
-    console.log('Failed to set the vertex information');
-    return;
-  }
+  if (!initArrayBuffer1(gl, 'a_Color', colors2, 3, gl.FLOAT)) return -1;
   //draw the wall
   modelMatrix.setTranslate(10, -0.3, 1);
   modelMatrix.scale(1, 3, 14);
-
+*/
   PushMatrix1(modelMatrix);
     modelMatrix.rotate(4, 0, 0, 1);
     modelMatrix.translate(0, -0.01, 0);
@@ -1225,7 +1248,6 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
   modelMatrix = popMatrix1();
 
   // draw the TV
-  //Draw a sofa
 
   //    v6----- v5
   //   /|      /|
@@ -1235,6 +1257,9 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
   //  |/      |/
   //  v2------v3
 
+  
+
+/*
   var vertices = new Float32Array([   // Coordinates(x,y,z)
      2.3, 1.6, 1.0,  2.0, 3.0, 2.0,  2.0, 1.0, 2.0,  2.3, 1.0, 1.0, // v0-v1-v2-v3 front
      2.3, 1.6, 1.0,  2.3, 1.0, 1.0,  2.3, 1.0,-1.0,  2.3, 1.6,-1.0, // v0-v3-v4-v5 right
@@ -1253,21 +1278,22 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
     0.2,0.2,0.3,  0.2,0.2,0.3,  0.2,0.2,0.3, 0.2,0.2,0.3   // v4-v7-v6-v5 back
   ]);
 
-  var n = initVertexBuffers1(gl, vertices, colors2);
-  if (n < 0) {
-    console.log('Failed to set the vertex information');
-    return;
-  }
-  //draw the wall
+  if (!initArrayBuffer1(gl, 'a_Position', vertices, 3, gl.FLOAT)) return -1;
+  if (!initArrayBuffer1(gl, 'a_Color', colors2, 3, gl.FLOAT)) return -1;
+  */
+  drawTexture (gl, n, u_Sampler, textureStorage[1]);
+  gl.uniform1i(u_isTexture, true);
+
   modelMatrix.setTranslate(17.3, 0, 1);
   modelMatrix.scale(1, 2, 2.5);
 
   PushMatrix1(modelMatrix);
+  
     drawbox(gl, u_ModelMatrix, u_NormalMatrix, n);
   modelMatrix = popMatrix1();
 
  //tracking point
-
+/*
  var colors2 = new Float32Array([    // Colors
     0.0,0.5,0.0,  0.0,0.5,0.0,  0.0,0.5,0.0, 0.0,0.5,0.0,   // v0-v1-v2-v3 front
     0.0,0.5,0.0,  0.0,0.5,0.0,  0.0,0.5,0.0, 0.0,0.5,0.0,   // v0-v3-v4-v5 right
@@ -1277,12 +1303,9 @@ function draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isTexture, u_Sampler) {
     0.0,0.5,0.0,  0.0,0.5,0.0,  0.0,0.5,0.0, 0.0,0.5,0.0   // v4-v7-v6-v5 back
   ]);
 
-  var n = initVertexBuffers1(gl, false, colors2);
-  if (n < 0) {
-    console.log('Failed to set the vertex information');
-    return;
-  }
-
+  if (!initArrayBuffer1(gl, 'a_Color', colors2, 3, gl.FLOAT)) return -1;
+*/
+  gl.uniform1i(u_isTexture, false);
   modelMatrix.setTranslate(X_e, Y_e, Z_e);
   modelMatrix.scale(0.5, 0.5, 0.5);
 
