@@ -16,13 +16,12 @@ var VSHADER_SOURCE =
   'varying vec4 v_Color;\n' +
 
   //'varying vec2 v_texcoord;\n' +
+  //'uniform bool u_isTexture;\n' +
 
   'uniform bool u_isLighting;\n' +
   'void main() {\n' +
   '  gl_Position = u_ProjMatrix * u_ViewMatrix * u_ModelMatrix * a_Position;\n' +
-
-  //'  v_texcoord = a_texcoord;\n' +
-
+  
   '  if(u_isLighting)\n' + 
   '  {\n' +
   '     vec3 normal = normalize((u_NormalMatrix * a_Normal).xyz);\n' +
@@ -33,8 +32,24 @@ var VSHADER_SOURCE =
   '  else\n' +
   '  {\n' +
   '     v_Color = a_Color;\n' +
-  '  }\n' + 
+  '  }\n' +
+/*
+  '  if(u_isLighting)\n' + 
+  '  {\n' +
+  '     vec3 normal = normalize((u_NormalMatrix * a_Normal).xyz);\n' +
+  '     float nDotL = max(dot(normal, u_LightDirection), 0.0);\n' +
+        // Calculate the color due to diffuse reflection
+  '     vec3 diffuse = u_LightColor * a_texcoord * nDotL;\n' +
+  '     v_texcoord = vec4(diffuse, a_texcoord.a);\n' +  '  }\n' +
+  '  else\n' +
+  '  {\n' +
+  '     v_texcoord = a_texcoord;\n' +
+  '  }\n' +*/
+
   '}\n';
+
+  
+
 
 // Fragment shader program
 var FSHADER_SOURCE =
@@ -42,12 +57,15 @@ var FSHADER_SOURCE =
   'precision mediump float;\n' +
   '#endif\n' +
 
-  'varying vec2 v_texcoord;\n' +
-  'uniform sampler2D u_texture;\n' +
+  
+  //'uniform sampler2D u_texture;\n' +
+  //'varying vec2 v_texcoord;\n' +
 
   'varying vec4 v_Color;\n' +
   'void main() {\n' +
   '  gl_FragColor = v_Color;\n' +
+
+  //'  gl_FragColor = texture2D(u_texture, v_texcoord);\n' + 
 
   //'  vec4 Color1 = v_Color;\n' +
   //'  vec4 Color2 = texture2D(u_texture, v_texcoord);\n' +
@@ -125,13 +143,6 @@ function main() {
   }
 
   // Set the light color (white)
-  
-
-/*
-  document.onkeydown = function(ev){
-  	//alert(ev.keyCode);
-    keydown(ev, gl, u_ModelMatrix, u_NormalMatrix, u_isLighting);
-  };*/
 
   document.onkeydown = function(ev){
   	//alert(ev.keyCode);
@@ -220,7 +231,7 @@ function main() {
 
   	draw1(gl, u_ModelMatrix, u_NormalMatrix, u_isLighting, u_textureLocation);
   	
-  };
+  }
 
   var plus = 0.3;
   //while(angle_lamb < 45 && angle_lamb > -45) 
@@ -239,7 +250,6 @@ function main() {
     angle_lamb += plus;
   }
   draw();
-  
 }
 
 function sleep(numberMillis) {
@@ -463,7 +473,7 @@ function initLambVertexBuffers(gl) {
 }
 
 function initWallVertexBuffers(gl) {
-	//draw a box
+	//draw a square
 	
 	var verticesColors = new Float32Array([
 		10.0, -2.0, -10.0,  1.0, 1.0, 1.0,
